@@ -10,7 +10,9 @@ This is an example notebook for how to analyze an individual dataset or a group 
 See the `README.md` for more information about how everything is structured.
 
 Make a copy of this notebook and label it with:  
-`ds_analysis_<ds|grp_id>.Rmd`   
+`ds_analysis_<grp_id>_<ds_id>.Rmd`   
+So this would be labeled as "ds_analysis_grp1_test_GSE22047.Rmd"
+
 It is located in:   
 `code/`  
   `ds_analysis/`  
@@ -24,9 +26,16 @@ Then in your local data directory, make a directory for this group or dataset:
 
 
 ### BEFORE ANALYSIS
-0. Fill in the keep/dataset comparison in `tissue_info` or `treated_cells_info`, and update the `ds_list` spreadsheet. 
+0. Fill in the keep/dataset comparison in `tissue_info` or `treated_cells_info`, and update the `ds_list` spreadsheet. You can do this as you look at the datasets individually, this should just help you to figure out what datasets to use. 
 
-For an example of this, go to the `tissue_info` spreadsheet and look at the "small airway epithelium" dataset. I added the "comparison" and "in group" columns. 
+Read the description of the study again, you may also want to look it up and see if there's other info available about the study.
+We want to be comparing the same sort of effect - in most cases, smokers and non-smokers - in the same tissue. If the tissue doesn't appear accurate, or there's something else going on, note it and move to the next dataset.
+
+If there are less than 10 males or 10 females, write "small" and skip it for now. 
+
+If two studies appear the same or related, we need to be careful about this and we will note it.
+
+For an example of this, go to the `tissue_info` spreadsheet and look at the "small airway epithelium" dataset. I added the "comparison" and "in group" columns. Also add a "downloaded" column for when it is downloaded.
 The comparison should say one of the following if we keep it ("in group" column):
 * "current vs never"
 * "current vs former"
@@ -36,29 +45,37 @@ and then be followed with additional conditions with a ";".
 Alternately if it doesn't fit in these categories, you can just describe
 e.g. "current vs former; COPD" -OR- if we're not keeping it b/c there are no healthy smokers: "tumor samples". We may come back to these datasets, the goal is just to group for meta-analysis.
 
-We then add all of the groups and their descriptions to the `ds_list` file and assign a group id. One study can belong to multiple groups.
+Eventually, we add all of the groups and their descriptions to the `ds_list` file and assign a group id. One study can belong to multiple groups.
 
 ### METADATA LEVEL
 ```{r}
 require('GEOquery')
 require('tidyverse')
-require('googlesheets4')
 
-# you need to run `sheets_auth()` first, this will setup a browser prompt, and then you can read the sheet
-# you can do this for any sheet in the google drive, you just need to have the URL
+# devtools::install_github("tidyverse/googlesheets4") # <-- make sure to use this instead of just install for this package
+require('googlesheets4') 
+require('googledrive')
+
+
+#sheets_auth() # you need to run only the first time, this will setup a browser prompt, and then you can read the sheet
+
+# if you have problems, download this spreadsheet locally and use from there
 sample_sex_lab <- read_sheet("https://docs.google.com/spreadsheets/d/1lEUVsyXLDcyUQB7mXk0B-LtsWkBn66gKaIV74OFAGVs/edit#gid=463642465")
 ```
 
-1. Download all the data for a dataset group
+1. Download the dataset
 ```{r}
+grp_id <- "grp1_test"
 list.ids <- c("GSE22047",  "GSE43079")
+study_name <- list.ids[[1]]
 # step 1: try GEOQuery for the "GSE" prefix ones
 gse.obj1 <- getGEO(list.ids[[1]]) 
-gse.obj2 <- getGEO(list.ids[[2]]) 
+
 
 # step 2: list ones not in available, we can grab from refine-bio
 # the problem is that this is a little slow. You can also download the "E-" ones from ArrayExpress.
-
+# I will send you a file with all the metadata for these... :(
+# just make a note in the `tissue_info` file under this tissue that it could not be downloaded yet
 ```
 
 
@@ -66,10 +83,12 @@ gse.obj2 <- getGEO(list.ids[[2]])
 2. Identify treatment and control data
 ```{r}
 # note: one obj may have mult platforms
+# grab phenotype data
+ls(gse.obj1)
 p1_gpl570 <- pData(gse.obj1$`GSE22047-GPL570_series_matrix.txt.gz`)
 p1_gpl6804 <- pData(gse.obj1$`GSE22047-GPL6804_series_matrix.txt.gz`)
-p2_gpl570 <- pData(gse.obj2$`GSE43079-GPL570_series_matrix.txt.gz`)
-p2_gpl16419 <- pData(gse.obj2$`GSE43079-GPL16419_series_matrix.txt.gz`)
+#p2_gpl570 <- pData(gse.obj2$`GSE43079-GPL570_series_matrix.txt.gz`)
+#p2_gpl16419 <- pData(gse.obj2$`GSE43079-GPL16419_series_matrix.txt.gz`)
 ```
 
 
@@ -78,24 +97,35 @@ p2_gpl16419 <- pData(gse.obj2$`GSE43079-GPL16419_series_matrix.txt.gz`)
 
 You will have to identify which columns are present and describe the smoker status and other covariates 
 ```{r}
-study_name <- "GSE22047"
 colnames(p1_gpl570) 
+p1_gpl570 %>% View()
 # characteristics_ch1.x often have data too -- here they are a mess tho and contain diff fields, so be careful
+p1_gpl570 %>% 
+  select(geo_accession, characteristics_ch1.1, characteristics_ch1.2, characteristics_ch1.3) %>% 
+  View()
 
+
+# always want `geo_accession` <-- this is the sample ID
+# grab the columns that seem relevant!
+
+# then make the names friendlier (no spaces!)
 smok_vars <- p1_gpl570 %>% 
   select(geo_accession, "copd status:ch1", "smoking status:ch1") %>%
   rename(copd="copd status:ch1", smoker="smoking status:ch1")
+
+# what is missing?
+# what are the values?
 table(smok_vars$copd)
-table(is.na(smok_vars$copd)) # looks like absence means no? 
+table(is.na(smok_vars$copd)) # looks like absence means no? this is a bad way to encode data so we're going to do something else with it
+
 table(smok_vars$smoker)  # multiple labels mean the same thing "NS", "nonsmoker" (poor metadata), we will fix
 table(is.na(smok_vars$smoker)) # all present, yay
 
-# clean up the data
+# clean up the data within the columns
 smok_vars2 <- smok_vars %>%
   mutate(smoker=case_when(
     smoker %in% c("NS", "nonsmoker") ~ "nonsmoker",
-    smoker %in% c("S", "smoker") ~ "smoker",
-    TRUE ~ smoker
+    smoker %in% c("S", "smoker") ~ "smoker"
   )) %>%
   mutate(copd=ifelse(is.na(copd), "no", copd))
 
@@ -112,14 +142,23 @@ smok_healthy <- smok_vars2 %>%
 # -- are there sex labels somewhere? these should match "text_sex", but sometimes they do not
 #summary(p1_gpl570)
 covariate <- p1_gpl570 %>% 
-  select(geo_accession, "serum 25-oh-d:ch1", "ethnicity:ch1") %>%
-  rename(d_vit="serum 25-oh-d:ch1", eth="ethnicity:ch1")
+  select(geo_accession, "serum 25-oh-d:ch1", "ethnicity:ch1", "department of genetic medicine id:ch1" ) %>%
+  rename(d_vit="serum 25-oh-d:ch1", eth="ethnicity:ch1", id=`department of genetic medicine id:ch1`)
+
+# it's possible that there are multiple samples for the same person
+# look for this! -- here it isn't the case, but it's something to be careful abt
+covariate %>%
+  group_by(id) %>%
+  count() %>%
+  arrange(desc(n))
+
 
 table(covariate$d_vit)
 table(is.na(covariate$d_vit)) # missing 205, this doesnt seem useful, but worth looking at to try to figure out what is going on?
 # it's possible someone is present only once...
 table(covariate$eth) 
 table(is.na(covariate$eth)) # missing 156 samples
+
 ```
 
 3. Get the number m and number f in each category, as well as the IDs for these
@@ -138,9 +177,7 @@ smok_w_sex_lab2 <- smok_w_sex_lab %>% filter(!is.na(expr_sex))
 # get the sex breakdown
 table(smok_w_sex_lab2[,c("expr_sex", "smoker")])
 
-
-
-# if there is less than 5 in a category, make note of it on the `tissue_info` spreadsheet in a column, we may need to discard
+# if there is less than 5 in a category, make note of it on the `tissue_info` spreadsheet in a column, write out this info but we may need to discard for expression analysis
 ```
 
 ```{r}
@@ -157,10 +194,9 @@ ggplot(smok_w_sex_lab2, aes(x=pred, y=expr_sex))+
 # - switch "expr_sex" to "text_sex" to visualize
 
 # remove any that are mislabeled
-
-# (here none are removed)
 smok_w_sex_lab3 <- smok_w_sex_lab2 %>% 
   filter(text_sex==expr_sex | text_sex == "unknown")
+# (here none are removed)
 ```
 
 4. Write out the breakdown in two places 
@@ -170,8 +206,7 @@ counts_by_grp <- smok_w_sex_lab3 %>%  mutate(grp=case_when(
   smoker=="nonsmoker" & expr_sex=="female" ~ "num_ns_f",
   smoker=="nonsmoker" & expr_sex=="male" ~ "num_ns_m",
   smoker=="smoker" & expr_sex=="female" ~ "num_s_f",
-  smoker=="smoker" & expr_sex=="male" ~ "num_s_m"
-  )) %>% 
+  smoker=="smoker" & expr_sex=="male" ~ "num_s_m")) %>% 
   group_by(grp) %>% 
   count() %>%
   ungroup() %>%
@@ -182,22 +217,26 @@ counts_by_grp <- smok_w_sex_lab3 %>%  mutate(grp=case_when(
 counts_by_grp 
 
 
+# Output #1:
 # append the counts to the dataset list as a sheet
+# if you have problems with this, you can just write it out and paste it into the file
 ss <- sheets_find("ds_list")
-sheets_write(ss,data=counts_by_grp, sheet="grp1_test") 
-# sheets_append(ss,data=counts_by_grp, sheet="grp1_test") # once the sheet has been created
+#sheets_write(ss,data=counts_by_grp, sheet=grp_id)  # for the first in a group
+ sheets_append(ss,data=counts_by_grp, sheet=grp_id) # once the sheet has been created
 
-# locally write out the labels of the individual samples
-grp_id <- "grp1_test"
-dir.create(sprintf("data/grp_data/%s/", grp_id)) # the first time
+# Output #2:
+# locally write out the labels of the individual samples with the covariates
+dir.create(sprintf("data/grp_data/%s/", grp_id)) # the first time for each group
 
-smok_w_sex_lab3 %>% 
+smok_w_sex_lab3 %>% left_join(covariates) %>%
   write_csv(sprintf("data/grp_data/%s/%s_metadata.csv", grp_id, study_name))
 
 ```
 
 ```
 
+
+STOP HERE FOR NOW :)
 
 ### GENE LEVEL
 5. Expression data QC
