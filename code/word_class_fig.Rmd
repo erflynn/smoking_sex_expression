@@ -1,0 +1,218 @@
+---
+title: "Visualizing word classification"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r}
+require('tidyverse')
+
+smok_dat <- read.csv("../../data/smok_dat/smoking_data_summary2.csv")
+tf_idf <- read.delim2("nlp/tf_idf.txt", header=FALSE)
+my_str <-read.delim2("nlp/feature_names.txt", header=FALSE)
+colnames(tf_idf) <- my_str$V1
+gses <- read.csv("nlp/list_gses.csv", header=FALSE)
+gses$V1<- NULL
+
+rownames(tf_idf) <- gses$V2
+require('lsa')
+my_mat <- as.matrix(apply(t(tf_idf), c(1,2), as.numeric))
+cos_dist <- 1-cosine(my_mat) # columns are documents and rows are terms
+
+require('fpc')
+
+res2 <- pam(cos_dist, k=7, diss=TRUE)
+res3 <- pam(my_mat, k=7, diss=FALSE)
+
+res <- pamk(cos_dist, krange=seq(30,150, 10), diss=TRUE, critout=TRUE)
+res4 <- pamk(my_mat, krange=3:10, diss=FALSE, critout=TRUE)
+
+# try hierarchical clustering
+
+
+pcs <- prcomp(cos_dist)
+datf <- data.frame(cbind(pcs$rotation[,c("PC1", "PC2")], "cluster"=res2$clustering))
+ggplot(datf, aes(x=PC1, y=PC2))+geom_point(aes(color=factor(cluster)))
+```
+
+```{r}
+
+require('Rtsne')
+
+## Curating the database for analysis with both t-SNE and PCA
+Labels<-factor(res2$clustering)
+
+## for plotting
+colors = rainbow(length(unique(Labels)))
+names(colors) = unique(Labels)
+
+## Executing the algorithm on curated data
+tsne <- Rtsne(t(my_mat), dims = 2, perplexity=10,theta=0.05, verbose=TRUE,check_duplicates=FALSE, max_iter = 5000)
+
+## Plotting
+tsne2 <- data.frame(cbind(tsne$Y, "cluster"=res2$clustering))
+colnames(tsne2) <-c("x1", "x2", "cluster")
+##ggplot(tsne2, aes(x=x1, y=x2))+geom_point(aes(color=factor(cluster)))
+
+#try with is_distance
+
+```
+```{r}
+tsne3 <- Rtsne(cos_dist, dims = 2, perplexity=15,theta=0.1, is_distance=TRUE, verbose=TRUE,check_duplicates=FALSE, max_iter = 5000)
+
+tsne4 <- data.frame(cbind(tsne3$Y, "cluster"=res2$clustering))
+colnames(tsne4) <-c("x1", "x2", "cluster")
+tsne4$cluster <- factor(tsne4$cluster)
+ggplot(tsne4, aes(x=x1, y=x2))+geom_point(aes(color=cluster))+ theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+ggsave(file="../../data/smok_dat/figures/tsne_smok.png", dpi="retina", height=5, width=6)
+
+```
+
+Look at the words in each of the clusters
+```{r}
+all_sums <- apply(my_mat, 1, function(x) sum(x))
+sorted <- sort(all_sums, decreasing=TRUE)
+most.common <- head(sorted,40)
+
+hue_cols <- hue_pal()(7)
+clus <- 7
+
+for (clus in seq(1,7)){
+  my_sums <- apply(my_mat[,res2$clustering==clus], 1, function(x) sum(x*7))
+  rem_dat <- setdiff(names(my_sums), names(most.common))
+  png(sprintf("../../data/smok_dat/figures/word_clus_%s.png", clus), width=1280,height=800)
+  wordcloud(rem_dat, my_sums[rem_dat], max.words=100, min.freq=2, color=hue_cols[clus], random.order=FALSE)
+  dev.off()
+}
+    
+# 4 <- CSC, CSE
+# 2 <-- pregnancy
+
+
+smok_dat %>% filter(gse %in% names(res2$clustering)[res2$clustering==4])  %>% select("title")
+```
+
+
+Look at the sex breakdown for each of the clusters
+
+
+```{r}
+
+# from smoking alluvial
+comb2 <- comb_labels_long %>% filter(labeling_method == "exprsex") %>%
+  select(-freq, -labeling_method) %>%
+  mutate(study=as.character(study))
+
+gse2clus <- data.frame(cbind("gse"=names(res2$clustering), "cluster"=res2$clustering))
+write_csv(gse2clus, "../../data/smok_dat/gse2clus.csv")
+
+comb_plus_gse <- inner_join(comb2, gse2clus, by=c("study"="gse"))
+ggplot(comb_plus_gse, aes(x=cluster))+geom_bar(aes(color=sex, fill=sex))
+```
+
+```{r}
+
+comb2_counts <- comb2 %>% select(-num_samples, -sex) %>% pivot_longer(cols=c(num_f, num_m))
+
+comb_counts_clus <- inner_join(comb2_counts, gse2clus, by=c("study"="gse")) 
+
+# // TODO - add in unlabeled
+comb_counts3 <- comb_counts_clus %>% group_by(cluster, name) %>% select(-study) %>%
+  summarize(count=sum(value, na.rm=TRUE)) %>%
+  ungroup() %>%
+  mutate(sex=ifelse(name=="num_f", "female", "male"),
+         cluster=factor(cluster)) %>%
+  select(-name)
+
+ggplot(comb_counts3, aes(x=cluster,y=count))+geom_bar(aes(color=sex, fill=sex), stat="identity")+theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))+theme(axis.text.x=element_text(colour=hue_cols))+ylab("number of samples")
+ggsave(file="../../data/smok_dat/figures/sex_count_clus2.png", dpi="retina", width=6, height=4)
+```
+
+```{r}
+
+large_study2 <- large_study %>% filter(labeling_method=="exprsex") %>%
+  select(-freq, -labeling_method) %>% mutate(study=as.character(study))
+comb_plus_gse2 <- inner_join(large_study2, gse2clus, by=c("study"="gse"))
+ggplot(comb_plus_gse2, aes(x=cluster))+geom_bar(aes(color=sex, fill=sex))+ theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))+theme(axis.text.x=element_text(colour=hue_cols))+ylab("number of studies")
+
+ggsave(file="../../data/smok_dat/figures/sex_breakdown_clus2.png", dpi="retina", width=6, height=4)
+```
+
+
+More figures
+```{r}
+flow_freq_counts2 <- flow_freq_counts %>% mutate(labeling_method=ifelse(labeling_method=="text_sex", "metadata", "exprsex")) %>% mutate(labeling_method=factor(labeling_method, levels=c("metadata", "exprsex"))) %>% mutate(sex=factor(sex, levels=c("female", "male", "unlabeled")))
+ggplot(flow_freq_counts2,
+       aes(x = labeling_method, 
+           stratum = sex, alluvium = row_id,
+           y = Freq,
+           fill = sex, label = sex)) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = .5) +
+  geom_text(stat = "stratum", size = 3) +
+  xlab("Label source")+ylab("Number of samples")+
+  theme_bw() + theme( panel.grid.major = element_blank(),
+                      panel.grid.minor = element_blank()) + 
+  theme(legend.position = "none") 
+
+ggsave(file="../../data/smok_dat/figures/sample_alluvial.png", dpi="retina", width=6, height=4)
+```
+
+
+```{r}
+ggplot(large_study,
+       aes(x = labeling_method, 
+           stratum = sex, 
+           alluvium = study,
+           y = freq,
+           fill = sex, label = sex)) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = .5) +
+  geom_text(stat = "stratum", size = 3) +
+  xlab("Label source")+ylab("Number of studies")+
+  theme_bw() + theme( panel.grid.major = element_blank(),
+                      panel.grid.minor = element_blank()) + 
+  theme(legend.position = "none") 
+
+ggsave(file="../../data/smok_dat/figures/study_alluvial.png", dpi="retina", width=6, height=4)
+```
+
+
+
+Need cell line vs non-cell line
+```{r}
+smok_dat <- read.csv("../../data/smok_dat/smoking_data_summary_0109-annot.csv")
+smok_cl <- smok_dat %>% select(gse, cell_line, cell_name, tissue)
+cl_sex <- inner_join(smok_cl , large_study2, by=c("gse"="study")) %>% mutate(cell_line=ifelse(cell_line, "cell line", "tissue sample"))
+ggplot(cl_sex, aes(x=cell_line))+geom_bar(aes(color=sex, fill=sex))+xlab("")+ylab("number of studies")+ theme_bw() + theme( panel.grid.major = element_blank(),
+                      panel.grid.minor = element_blank()) 
+ggsave(file="../../data/smok_dat/figures/cl_vs_tissue.png", dpi="retina", width=3.8, height=4)
+```
+
+
+CSE vs non-CSE
+```{r}
+cl_clus <- inner_join(cl_sex, gse2clus)
+cl_clus2 <- cl_clus %>% mutate(clus_4=(cluster==4)) %>%
+  select(gse, cell_line, clus_4)
+table(cl_clus2[,c("cell_line", "clus_4")])
+
+# cluster 4 contains mostly cell line data
+```
+
+
+
+My annotations
+
+Manual vs 
+```{r}
+
+
+```

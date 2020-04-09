@@ -1,0 +1,239 @@
+---
+title: "Examine Manual Annot"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r}
+require('tidyverse')
+```
+
+
+```{r}
+smok_dat <- read.csv("../../data/smok_dat/smoking_data_summary_0109-annot.csv", stringsAsFactors = FALSE)
+smoking_sex_labels <- read_csv("../../data/smok_dat/smoking_labels_reform.csv")
+```
+
+```{r}
+smok_dat %>% group_by(keep) %>% count()
+```
+
+
+```{r}
+smok_dat %>% filter(keep %in% c("maybe", "yes")) %>% group_by(type) %>% count()
+```
+
+```{r}
+smok_dat %>% filter(keep %in% c("yes")) %>% ggplot(aes(x=type))+geom_histogram(stat="count")+ylab("number of studies")+xlab("selected study type")
+
+ggsave("keep_breakdown.png", dpi="print", width=3, height=3)
+```
+
+```{r}
+smok_dat %>% filter(keep %in% c("maybe", "yes")) %>%  separate_rows(tissue2,sep="; ") %>% mutate(tissue2=ifelse(str_detect(tissue2, "blood -"), "blood component", tissue2)) %>% group_by(tissue2) %>% count() %>% filter(tissue2 != "") #%>% write_csv("tissue_counts_kept.csv")
+
+
+```
+
+```{r}
+smok_dat %>% filter(keep %in% c("no")) %>% mutate(type=ifelse(is.na(type) | type=="", "not relevant", type)) %>% group_by(type) %>% count()
+
+```
+
+```{r}
+reject_group <- smok_dat %>% filter(keep %in% c("no")) %>% mutate(type=ifelse(is.na(type) | type=="", "not relevant", type)) %>% select(gse, type) 
+
+ggplot(reject_group, aes(x=type))+geom_histogram(stat="count")+xlab("rejection reason")+ylab("number of studies")
+ggsave("rej_reasons.png", dpi="print", width=4, height=3)
+```
+
+
+```{r}
+smok_dat %>% filter(type=="treated cells") %>% group_by(treatment) %>% count() #%>% write_csv("treatment_counts_kept.csv")
+```
+
+```{r}
+# TODO - do we have cell line info
+cl_name_annot <- smok_dat %>% filter(type=="treated cells") %>% select(gse, title, cell_line, cell_name, annot_tiss) %>% mutate(std_cl=ifelse(!is.na(cell_name) & cell_name!="", cell_name, annot_tiss)) %>% mutate(std_cl=ifelse(str_detect(std_cl, "HBEC|NHBE|bronchial epithelial"), "bronchial epithelial cells", std_cl)) 
+
+# add in cell line sex labels
+cl_name_annot %>% mutate(hbec=(std_cl=="bronchial epithelial cells")) %>% inner_join(comb_labels_counts %>% filter(labeling_method=="exprsex"), by=c("gse"="study")) %>%  ggplot(aes(x=hbec))+geom_bar(aes(color=sex, fill=sex))+ylab("number of studies")+xlab("HBEC")
+ggsave("hbec.png", dpi="print", width=4, height=3)
+
+cl_name_annot %>% separate_rows(std_cl, sep=";") %>% group_by(std_cl) %>% count() %>% arrange(desc(n)) %>% write_csv("cell_types.csv")
+
+```
+
+```{r}
+cl_name_annot %>% mutate(cl_likely=(!is.na(cell_name) & cell_name!="")) %>% inner_join(comb_labels_counts %>% filter(labeling_method=="exprsex"), by=c("gse"="study")) %>%  ggplot(aes(x=cl_likely))+geom_bar(aes(color=sex, fill=sex))+ylab("number of studies")+xlab("named cell line")
+ggsave("named_cl.png", dpi="print", width=4, height=3)
+
+```
+
+
+```{r}
+# compute study-level counts
+comb_labels_counts <- smoking_sex_labels %>% 
+  select(-gpl) %>%
+  rename(metadata=text_sex, exprsex=expr_sex) %>%
+  gather(key="labeling_method", value="sex", -gse, -gsm) %>%
+  group_by(gse, labeling_method) %>%
+  summarize(num_samples=n(),
+            num_f=sum(sex=="female"),
+            num_m=sum(sex=="male")) %>%
+  mutate(study_type= case_when(
+    (is.na(num_f) & is.na(num_m)) ~ "unlabeled",
+    (!is.na(num_f) & !is.na(num_m) & num_f > 0 & num_m > 0 ) ~ "mixed",
+    (!is.na(num_f) & num_f > 0 ) ~ "female-only",
+    (!is.na(num_m) & num_m > 0 )~ "male-only")) %>%
+  mutate(freq=1) %>% 
+  ungroup(gse) %>%  
+  mutate(study_type=as.factor(study_type), 
+         labeling_method=factor(labeling_method, 
+                                levels=c("metadata", "exprsex")), 
+         gse=as.factor(gse)) %>% 
+  rename(study=gse) %>%
+  rename(sex=study_type)
+
+
+
+keep_info <- smok_dat %>% filter(keep %in% c("yes", "maybe")) %>% select(gse, type, treatment, tissue2) 
+kept_lab <- smoking_sex_labels %>% filter(gse %in% keep_info$gse)
+
+kept_freq_counts <- kept_lab %>% 
+  ungroup() %>% 
+  group_by(text_sex, expr_sex) %>% 
+  mutate(Freq=n()) %>% 
+  select(-gse, -gpl, -gsm) %>% 
+  unique() %>%
+  ungroup() %>%
+  mutate(text_sex=ifelse(is.na(text_sex), "unlabeled", text_sex),
+         expr_sex=ifelse(is.na(expr_sex), "unlabeled", expr_sex)) %>% 
+  mutate(row_id=1:n()) %>%
+  gather(key="labeling_method", value="sex", -Freq, -row_id) %>%
+  mutate(row_id=as.factor(row_id), 
+         labeling_method=factor(labeling_method, levels=c("text_sex", "expr_sex")),
+         sex=as.factor(sex)) %>%
+  unique() 
+
+ggplot(kept_freq_counts,
+       aes(x = labeling_method, 
+           stratum = sex, alluvium = row_id,
+           y = Freq,
+           fill = sex, label = sex)) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = .5) +
+  geom_text(stat = "stratum", size = 3) +
+  xlab("Label source")+ylab("Number of samples")+
+  theme_bw() + theme( panel.grid.major = element_blank(),
+                      panel.grid.minor = element_blank()) + 
+  theme(legend.position = "none") 
+ggsave("sample_alluvial_kept.png", dpi="print", width=6, height=4)
+```
+
+```{r}
+
+kept_large_study <- kept_lab %>% filter(gse %in% keep_info$gse) %>%
+  select(-gpl) %>%
+  rename(metadata=text_sex, exprsex=expr_sex) %>%
+  gather(key="labeling_method", value="sex", -gse, -gsm) %>%
+  group_by(gse, labeling_method) %>%
+  summarize(num_samples=n(),
+            num_f=sum(sex=="female"),
+            num_m=sum(sex=="male")) %>%
+  mutate(study_type= case_when(
+    (is.na(num_f) & is.na(num_m)) ~ "unlabeled",
+    (!is.na(num_f) & !is.na(num_m) & num_f/num_samples > 0.8 & num_m > 0 ) ~ "mostly-female",
+    (!is.na(num_f) & !is.na(num_m) & num_m/num_samples > 0.8 & num_f > 0 ) ~ "mostly-male",
+    (!is.na(num_f) & !is.na(num_m) & num_f > 0 & num_m > 0 ) ~ "mixed",
+    (!is.na(num_f) & num_f > 0 ) ~ "female-only",
+    (!is.na(num_m) & num_m > 0 ) ~ "male-only")) %>%
+  mutate(freq=1) %>% 
+  ungroup(gse) %>%  
+  mutate(study_type=factor(study_type, 
+                           levels=c("female-only", "mostly-female", "mixed", "mostly-male", "male-only", "unlabeled")), 
+         labeling_method=factor(labeling_method, 
+                                levels=c("metadata", "exprsex")), 
+         gse=as.factor(gse)) %>% 
+  rename(study=gse) %>%
+  rename(sex=study_type)
+
+
+ggplot(kept_large_study,
+       aes(x = labeling_method, 
+           stratum = sex, 
+           alluvium = study,
+           y = freq,
+           fill = sex, label = sex)) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = .5) +
+  geom_text(stat = "stratum", size = 3) +
+  xlab("Label source")+ylab("Number of studies")+
+  theme_bw() + theme( panel.grid.major = element_blank(),
+                      panel.grid.minor = element_blank()) + 
+  theme(legend.position = "none") 
+ggsave("study_alluvial_kept.png", dpi="print", width=6, height=4)
+
+```
+
+```{r}
+lab_plus_info <- comb_labels_counts %>% filter(labeling_method=="exprsex") %>% select(-freq) %>%
+  right_join(keep_info, by=c("study"="gse"))
+
+lab_plus_info %>% group_by(type, sex) %>% count()
+
+```
+
+```{r}
+lab_plus_info %>% mutate(type=factor(type, levels=c("smoking", "treated cells", "smoking history"))) %>% ggplot(aes(x=type))+geom_bar(aes(color=sex, fill=sex))+ylab("number of studies")+xlab("study type")
+
+ggsave("study_type_sex.png",dpi="print", width=5, height=3)
+```
+
+
+```{r}
+lab_plus_info %>% group_by(type) %>% summarize(num_f=sum(num_f, na.rm=TRUE), num_m=sum(num_m, na.rm=TRUE))
+
+```
+
+
+```{r}
+# what is the overlap w clusters?
+
+gse2clus <- read_csv("../../data/smok_dat/gse2clus.csv")
+clus_plus_annot <- smok_dat %>% filter(keep=="yes") %>% select(gse, type, treatment, tissue2) %>% inner_join(gse2clus) %>% mutate(clus4=ifelse(cluster==4, TRUE, FALSE))
+clus_plus_annot %>% group_by(type, clus4) %>% count()
+
+table(clus_plus_annot[,c("type", "clus4")])
+```
+
+```{r}
+clus_plus_annot %>% filter(type!="treated cells") %>% 
+   separate_rows(tissue2,sep="; ") %>%
+  group_by(cluster, tissue2) %>% count()
+
+# cluster 1 has a lot of airway epithelium
+# cluster 2 has blood, placenta, umbilical cord sperm, etc...
+# cluster 3 is mostly lung
+# cluster 5 contains a lot of lung
+# cluster 6 ??
+# cluster 7 all blood but most are "smoking history" not smoking
+```
+
+CSE studies
+- can we look at what the cell lines are? 
+- do these match sex labels?
+
+```{r}
+cell_db <- fread("../../data/db_data/cellosaurus_df.txt", data.table=FALSE)
+
+cell_sm <- cell_db %>% select(age, sex, cl, synonyms) %>% separate_rows(synonyms, sep=" \\| ") %>% mutate(synonyms=tolower(synonyms))
+
+
+cell_reform <- cell_sm %>% filter(synonyms != "") %>% mutate(synonyms=str_replace_all(synonyms, " |-", ""))
+cl_name_annot %>%  inner_join(comb_labels_counts %>% filter(labeling_method=="exprsex"), by=c("gse"="study")) %>% select(gse, sex, std_cl) %>% inner_join(cell_reform, by=c("std_cl"="synonyms"))
+```

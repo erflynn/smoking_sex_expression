@@ -1,0 +1,299 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+Before doing the individual and group study analysis, we need to make sure that everything is grouped by tissue, and relabeled.
+
+
+Group by tissue:
+
+```{r}
+require('tidyverse')
+require('googlesheets4')
+require('googledrive')
+```
+
+```{r}
+# you need to run `sheets_auth()` first and login to get this to work
+manual_annot <- read_sheet("https://docs.google.com/spreadsheets/d/1bpu0SlTTvrRglCOn9JYTj4R4X34lstBlxgUAlx8N4S4/edit#gid=1592807119")
+
+manual_annot %>% group_by(keep) %>% count()
+```
+
+```{r}
+keep_dat <- manual_annot %>% filter(keep=="yes")
+keep_dat %>% group_by(type) %>% count()
+```
+
+```{r}
+treated_cells <- keep_dat %>% filter(type=="treated cells") 
+treated_cells %>% group_by(treatment) %>% count()
+```
+
+
+```{r}
+tissue_data <- keep_dat %>% filter(type=="smoking") 
+
+tissue_data %>% group_by(tissue2) %>% count()
+
+```
+
+
+
+Add in sample-level sex annotations
+```{r}
+# setup for this - put it in a google sheet
+human_sl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_all_sl.csv")
+human_rnaseq_sl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_rnaseq_sl.csv")
+
+# what did the text labels say
+human_metadata <- read.csv("../../../../drug_trt/data/01_metadata/human_microarray_metadata_sex.csv")
+human_rnaseq <- read.csv("../../../../drug_trt/data/01_metadata/human_rnaseq_metadata_sex.csv")
+
+# what did our old labels say
+sl_lab <- human_sl %>% 
+  bind_rows(human_rnaseq_sl) %>% 
+  rename(acc=id) %>% 
+  mutate(expr_sex=ifelse(pred > 0.5, "male", "female")) %>% 
+  full_join(human_metadata %>% 
+              bind_rows(human_rnaseq) %>% 
+              select(acc, mapped_sex) %>% 
+              rename(text_sex=mapped_sex)) %>%
+  unique()
+
+
+rnaseq_exp_to_sample <- read_csv("../../../../drug_trt/data/01_metadata/human_exp_to_sample_counts.csv") 
+exp_to_sample <- read_csv("../../../../drug_trt/data/01_metadata/human_exp_to_sample.csv") 
+
+rnaseq_exp_to_sample2 <- rnaseq_exp_to_sample %>% 
+  filter(present & num_reads >= 100000)
+
+exp_to_sample_smok <- exp_to_sample %>% 
+  bind_rows(rnaseq_exp_to_sample2 %>% 
+              select(study_acc, sample_acc)) %>% 
+  semi_join(keep_dat, by=c("study_acc"="gse"))
+
+exp_to_samp_w_sl <- exp_to_sample_smok %>% 
+  left_join(sl_lab, by=c("sample_acc"="acc")) %>%
+  unique() 
+# NOTE: we're missing a lot of labels
+
+table(is.na(exp_to_samp_w_sl$pred))
+# FALSE  TRUE 
+# 7285  1870 
+# possible they aren't in the actual metadata anyhow? I am confused
+
+# --- write this out --- #
+ss <- sheets_create(name="sample_sl", sheets=exp_to_samp_w_sl)
+googledrive::drive_mv(ss, path="CERSI_project/data/")
+```
+Add in cell line annotations 
+```{r}
+sample_cl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_compendia_sample_cl.csv")
+rnaseq_cl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_rnaseq_sample_cl.csv")
+
+sample_cl2 <- read_csv("../../../../drug_trt/data/02_labeled_data/human_compendia_sample_cl_part2.csv")
+rnaseq_cl2 <- read_csv("../../../../drug_trt/data/02_labeled_data/human_rnaseq_sample_cl_part2.csv")
+
+# study-level?
+study_cl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_compendia_study_cl.csv")
+study_rnaseq_cl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_rnaseq_study_cl.csv")
+
+cl_df <- sample_cl %>% 
+  bind_rows(rnaseq_cl) %>% 
+  select(gsm, accession) %>%
+  full_join(sample_cl2 %>% 
+              bind_rows(rnaseq_cl2) %>% 
+              select(gsm, accession) %>% 
+              rename(accession2=accession)) %>%
+  rename(accession1=accession) %>%
+  mutate(accession=case_when(
+    is.na(accession2) & !is.na(accession1) ~ accession1,
+    is.na(accession1) & !is.na(accession2) ~ accession2,
+    accession1==accession2 ~ accession1,
+    TRUE ~ "mismatch" # none
+  ))
+
+cl_df2 <- exp_to_sample_smok %>% 
+  left_join(cl_df2 %>% 
+              select(gsm, accession), by=c("sample_acc"="gsm"))
+
+# look at the cell metadata
+cell_metadata1 <- read.csv("../../../../drug_trt/data/01_metadata/human_metadata.csv")
+cell_metadata2 <- read.csv("../../../../drug_trt/data/01_metadata/human_rnaseq_sample_metadata.csv")
+
+cl_text <- cell_metadata1 %>% 
+  select(acc, cl_line) %>%
+  bind_rows(cell_metadata2 %>% select(acc, cl_line))
+
+
+# add a common name for the cell line?
+cell_dat <- read.csv("../../../../drug_trt/data/00_db_data/cellosaurus_df_v2.txt")
+cell_name <- cell_dat %>% select(accession, cl) %>%
+  mutate(cl=as.character(cl)) %>%
+  separate_rows(accession, sep="\\|") %>%
+  filter(accession!="list()") %>%
+  mutate(accession=tolower(accession))
+
+cl_df3 <- cl_df2 %>% left_join(cl_text, by=c("sample_acc"="acc")) %>%
+  separate_rows(accession, sep=";") %>%
+  left_join(cell_name, by=c("accession")) %>%
+  rename(cl_accession=accession, cl_text=cl_line, cl_name=cl) 
+
+cl_df4 <- cl_df3 %>%
+  group_by(study_acc, sample_acc) %>%
+  summarise_all(~ paste(unique(.), collapse=";")) %>%
+  ungroup() 
+
+cl_study <- cl_df4 %>%
+  group_by(study_acc) %>%
+  filter(cl_accession!="NA") %>%
+  mutate(n=n()) %>%
+  select(-sample_acc) %>%
+  summarize_all(~ paste(unique(.), collapse=";")) %>%
+  ungroup() %>%
+  left_join(keep_dat %>% select(gse, type), by=c("study_acc"="gse")) %>%
+  arrange(type, study_acc)
+#%>%
+#  left_join(study_cl %>% bind_rows(study_rnaseq_cl) %>% select(gse, accession), by=c("study_acc"="gse")) %>%
+#  rename(study_cl_acc=accession)
+# -- doesn't add
+
+trt_cl_dat <- cl_df4 %>% filter(study_acc %in% treated_cells$gse)
+
+# write this out
+sc <- sheets_create(name="sample_cell", sheets=list("cl_labels"=cl_df3, "cl_labels_trt"=trt_cl_dat, "cl_labels_study"=cl_study))
+googledrive::drive_mv(sc, path="CERSI_project/data/")
+```
+
+
+Summarize to study-level for sex labels
+```{r}
+sex_lab <- exp_to_samp_w_sl %>% select(study_acc, sample_acc, expr_sex, text_sex) %>%
+  pivot_longer(cols=c("expr_sex", "text_sex"), names_to="labeling_source",
+               values_to="sex")
+
+sex_lab2 <- sex_lab %>% 
+  mutate(sex=ifelse(is.na(sex), "NA", sex)) %>%
+  group_by(study_acc, labeling_source) %>%
+  summarize(num_f=sum(sex=="female"),
+            num_m=sum(sex=="male"),
+            num_unlabeled=sum(sex=="NA"),
+            num_samples=n()) %>%
+  mutate(study_sex=case_when(
+    num_f==num_samples ~ "female-only",
+    num_m==num_samples ~ "male-only",
+    (num_m+num_m) < (0.5*num_samples) ~ "unknown",
+    num_m/num_samples >= 0.8  ~ "mostly-male",
+    num_f/num_samples >= 0.8  ~ "mostly-female",
+    num_f/num_samples <= 0.2 ~ "mostly-male",
+    num_m/num_samples <= 0.2 ~ "mostly-female",
+    num_f==0 & num_m!=0 ~"male-only",
+    num_f!=0 & num_m==0 ~"female-only",
+    TRUE ~ "mixed"
+  )) %>%
+  mutate(study_sex=factor(study_sex, levels=c("female-only", 
+                                              "mostly-female", 
+                                              "mixed", "mostly-male", 
+                                              "male-only", "unknown")))
+
+# write this out
+sl_study <- sex_lab2 %>% 
+  filter(labeling_source=="expr_sex") %>% 
+  ungroup() %>%
+  select(-labeling_source) 
+
+sl <- sheets_create(name="study_sex_lab", sheets=sl_study)
+googledrive::drive_mv(sl, path="CERSI_project/data/")
+
+
+```
+
+treated_cl + treatment groupings
+```{r}
+trt_data <- treated_cells %>% 
+  rename(study_acc=gse, cl_annot=tissue2) %>%
+  left_join(cl_study) %>% 
+  left_join(sl_study) %>%
+  rename(num_cl_line=n) %>%
+  select(-type, -keep) 
+adj_trt <- trt_data %>% 
+  select(treatment) %>% unique() %>%
+  mutate(adj_trt=case_when(
+    treatment %in% c("cigarette component","nicotine","tobacco carcinogens") ~ "cigarette component",
+    treatment %in% c("cigarette smoke","whole cigarette smoke") ~ "whole cigarette smoke",
+    treatment %in% c("cigarette smoke condensate", 
+                       "cigarette smoke extract", 
+                       "cigarette smoke extract; other components",
+                       "tobacco smoke extract") ~ "cigarette smoke extract",
+    treatment %in% c("tobacco smoke exposure") ~ "whole tobacco smoke",
+    TRUE ~ treatment
+  )) 
+
+
+trt_data2 <- trt_data %>% left_join(adj_trt)
+
+counts_by_trt <- trt_data2 %>% group_by(adj_trt) %>% count() %>% arrange(desc(n))
+
+cse <- trt_data2 %>% filter(adj_trt=="cigarette smoke extract")
+cc <- trt_data2 %>% filter(adj_trt=="cigarette component")
+wcs <- trt_data2 %>% filter(adj_trt=="whole cigarette smoke")
+
+
+trtc <- sheets_create(name="treated_cells_info", 
+                    sheets=list("trt_cls_all"=trt_data,
+                                "group_cts"=counts_by_trt,
+                                "CSE"=cse,
+                                "CC"=cc,
+                                "WCS"=wcs))
+googledrive::drive_mv(trtc, path="CERSI_project/data/")
+# hmm didnt work...
+```
+
+Add in tissue, etc groupings
+--> result is a document with
+
+```{r}
+tissue_sl <- tissue_data %>% select(-type, -keep) %>%
+  rename(study_acc=gse) %>%
+  left_join(sl_study)
+
+tissue_sl2 <- tissue_sl %>%
+  separate_rows(tissue2, sep="; ") %>%
+  filter(tissue2!="cell line") %>%
+  mutate(adj_tissue=
+           case_when(tissue2=="large and small airway epithelium" ~"large airway epithelium; small airway epithelium",
+                     tissue2=="small airway epithelium, alveolar macrophages" ~ "small airway epithelium; alveolar macrophages",
+                     tissue2=="alveolar macrophage (lung epithelial)" ~ "alveolar macrophages",
+                     tissue2 == "bronchial epithelial cells" ~ "bronchial epithelium",
+                     tissue2 == "airway epithelial cilia" ~ "airway epithelium",
+                     str_detect(tissue2, "blood") ~ "blood",
+                     tissue2 %in% c("saliva", "buccal mucosa", "buccal epithelium") ~ "buccal mucosa",
+                     tissue2 == "bronchial brushing"  ~ "bronchial alveolar lavage",
+                     tissue2 %in% c("umbilical cord", "placenta") ~ "placenta or umbilical cord",
+                     tissue2 == "leukocyte" ~ "blood",
+                     TRUE ~ tissue2)) 
+tissue_sl3 <- tissue_sl2 %>% separate_rows(adj_tissue, sep="; ")
+study_tissue <- tissue_sl3 %>% group_by(study_acc) %>% mutate(adj_tissue=paste(adj_tissue, collapse=";"), tissue2=paste(tissue2, collapse=";")) %>% unique()
+tissue_group_counts <- tissue_sl3 %>% 
+  group_by(adj_tissue) %>% 
+  summarize(num_studies=n(),
+            num_mixed_sex=sum(study_sex=="mixed" | study_sex=="mostly-male" | study_sex=="mostly-female", na.rm=TRUE))  %>%
+  arrange(desc(num_studies), desc(num_mixed_sex))
+mixed_sex <- study_tissue %>% filter(study_sex %in% c("mixed", "mostly-male", "mostly-female"))
+
+mult_tiss <- (tissue_group_counts %>% filter(num_mixed_sex >=2))$adj_tissue
+single_tiss <- (tissue_group_counts %>% filter(num_mixed_sex ==1))$adj_tissue
+tiss1 <- tissue_sl3 %>% filter(study_sex %in% c("mixed", "mostly-male", "mostly-female") & adj_tissue %in% single_tiss)
+tiss_mult_l <- lapply(mult_tiss, function(tiss) {tissue_sl3 %>% filter(study_sex %in% c("mixed", "mostly-male", "mostly-female") & adj_tissue %in% tiss)})
+names(tiss_mult_l) <- mult_tiss
+list_sheets <- list("study_tissue"=study_tissue, "study_counts"=tissue_group_counts, "one_tiss"=tiss1) 
+list_sheets2 <- append(list_sheets, tiss_mult_l)
+
+tiss <- sheets_create(name="tissue_info2", 
+                    sheets=list_sheets2)
+googledrive::drive_mv(tiss, path="CERSI_project/data/")
+```
