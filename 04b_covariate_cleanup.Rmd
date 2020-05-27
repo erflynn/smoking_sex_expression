@@ -1,0 +1,102 @@
+---
+title: "Covariate_clean_up"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r}
+require('tidyverse')
+require('GEOquery')
+require('googlesheets4') 
+require('googledrive')
+```
+
+
+Key questions to ask:
+1) Are there any references to other studies? This is often included the `relation` column - double check and note this. We want to know if samples are shared.
+2) Are there multiple groups in the data? E.g. different tissues.
+3) How many participants were there really? Double check with the paper that this number matches up. Are there any repeated samples from the same subject? Check for subject IDs. We will need to analyze these differently?
+4) Which covariate fields are there? Are they included across multiple columns? (if so - do the columns have the same information, or different information?)
+5) Clean up the covariate data so that it is 1 column per covariate and the labels are consistent throughout.
+5) How many people are in each group? What data is missing? For now, just look at this and make sure missing data is listed as missing (decide whether it should be an NA or "").
+6) If there are sex labels in the data - do these match our labels? How many are mismatched? Add a variable to indicate this.
+
+Now - we will want to set up *consistent* covariate labels that you use across datasets. Decide what you want to call smokers, non-smokers, what race/ethnicity labels you will consistently use, etc. I would maybe keep notes about this and when you ad a covariate decide what it will be called and use it in the others. Then when we combine all of them into one table, that will really help us!
+
+
+This is the example 
+```{r}
+gse.obj <- GEOquery::getGEO("GSE63127") 
+
+
+pData_sm <- pData(gse.obj[[1]]) %>% 
+  select(geo_accession, 
+         source_name_ch1, 
+         "age:ch1",
+         "cilia length:ch1",
+         "copd status:ch1",
+         "department of genetic medicine id:ch1",
+         "ethnic group:ch1",                     
+         "ethnicity:ch1",
+         "serum 25-oh-d:ch1",
+         "sex:ch1",
+         "smoking status:ch1")
+
+
+
+# it is helpful to rename to remove the extra characters + spaces
+# here we are mapping:
+#  Afr --> black
+#  Eur --> white
+# so that we can combine the columns
+pData_sm2 <- pData_sm %>%
+  rename("eth"="ethnicity:ch1",
+         "eth_grp"="ethnic group:ch1") %>%
+  mutate(eth_relab=case_when(
+    eth=="Afr" ~ "black",
+    eth=="Eur" ~ "white",
+    is.na(eth) ~ eth, # NAs should stay NAs! 
+    TRUE ~ "err" # include something to show what you don't expect
+  ))
+
+table(is.na(pData_sm2$eth_relab))
+table(pData_sm2$eth_relab)
+table(pData_sm2[,c("eth_relab", "eth")]) # DOUBLE CHECK this matches what you think
+
+pData_sm3 <- pData_sm2 %>% 
+  unite(col="eth_comb", eth_grp, eth_relab, remove=FALSE, na.rm=TRUE) 
+table(pData_sm3$eth_comb)
+# Note that this changes the NA fields to a ""
+
+
+# in the case that we did not na.rm -- we might need to do other things!
+#  mutate(eth_comb2=str_replace_all(eth_comb, "NA|\\_", "")) 
+
+# also if both columns have info in them - we may need to rename!!
+#  mutate(eth_comb3=case_when(eth_comb2=="blackblack" ~ "black", TRUE ~ eth_comb  ))
+
+pData_sm4 <- pData_sm3 %>% 
+  rename(smok_col="smoking status:ch1") %>%
+  mutate(smok=case_when(
+    str_detect(smok_col, "non-smoker") ~ "NS",
+    str_detect(smok_col, "smoker") ~ "S",
+    TRUE ~ smok_col
+  ))
+
+```
+
+
+
+This is only a subset of the covariates - you will want to do more, but just showing for where/how to write it out.
+```{r}
+covDat <- pData_sm4 %>% 
+  select(geo_accession, eth, smok) 
+ss <- sheets_find("SAE_covariates")
+sheet_id <- "testGSE" # update to put in the gse ID!
+sheets_write(ss,data=covDat, sheet=sheet_id)  # for the first in a group
+# sheets_append(ss,data=covDat, sheet=sheet_id) # once the sheet has been created if you want to update
+
+# if you can't do this, write to a local csv!
+```

@@ -1,0 +1,54 @@
+---
+title: "example ds"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+Packages
+```{r}
+require('GEOquery')
+require('tidyverse')
+require('limma')
+```
+
+Load an example dataset and the covariate info you cleaned up
+```{r}
+gse.obj <- GEOquery::getGEO("GSE63127") 
+expData <- exprs(gse.obj[[1]])
+
+# read in the covariate info
+ss <- sheets_find("SAE_covariates")
+pheData <- sheets_read(ss, sheet="testGSE")
+
+```
+
+## Set up a linear model.
+
+Normally we would normalize and  summarize to probes first, so would be 12-20k genes. We would not do this by hand - this is just to illustrate what it will be doing eventually.
+```{r}
+
+# make sure this matches
+dim(expData) # 55k x 230
+dim(phenoDf) # 230 x 3
+
+
+# put the data together
+gene5000_df <- data.frame(t(expData[5000, ,drop=FALSE])) 
+gene5000_df$geo_accession <- rownames(gene500_df)
+
+comb_dat <- inner_join(pheData, gene5000_df, by="geo_accession") %>%
+  rename(gene="X1559792_at")
+
+# remove samples with missing gene expression data first
+comb_dat2 <- comb_dat %>% filter(!is.na(gene)) 
+
+# set up the linear regression
+fit <- lm(gene ~ eth + smok, data=comb_dat2)
+summary(fit) # which coefficients are significant? do you want to add an interaction term ? what is the adjusted R^2
+plot(fit) # you can also view these plots to get a sense of residuals! it's not going to look great here - but this is important if you are doing a regression 
+```
+
+Do this with limma
+```{r}
+```
