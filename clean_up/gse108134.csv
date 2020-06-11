@@ -1,0 +1,406 @@
+,geo_accession,source_name,30-day mean pm2.5 exposure level:ch1,smok,time of serial bronchoscopy (month):ch1,description,characteristics_ch1
+1,GSM2890598,small airway epithelium brushing,14.9135,S,M0,DGM-00061,smoking status: COPD smoker
+2,GSM2890599,small airway epithelium brushing,18.0293,S,M12,DGM-00061,smoking status: COPD smoker
+3,GSM2890600,small airway epithelium brushing,9.36769,S,M3,DGM-00061,smoking status: COPD smoker
+4,GSM2890601,small airway epithelium brushing,12.0733,S,M6,DGM-00061,smoking status: COPD smoker
+5,GSM2890602,small airway epithelium brushing,15.4362,S,M0,DGM-00167,smoking status: COPD smoker
+6,GSM2890603,small airway epithelium brushing,12.0264,S,M0,DGM-01275,smoking status: COPD smoker
+7,GSM2890604,small airway epithelium brushing,8.77947,S,M0,DGM-01749,smoking status: COPD smoker
+8,GSM2890605,small airway epithelium brushing,11.066,S,M0,DGM-01753,smoking status: COPD smoker
+9,GSM2890606,small airway epithelium brushing,14.0638,S,M12,DGM-01753,smoking status: COPD smoker
+10,GSM2890607,small airway epithelium brushing,9.04135,S,M3,DGM-01753,smoking status: COPD smoker
+11,GSM2890608,small airway epithelium brushing,16.8652,S,M6,DGM-01753,smoking status: COPD smoker
+12,GSM2890609,small airway epithelium brushing,9.625,S,M0,DGM-01961,smoking status: COPD smoker
+13,GSM2890610,small airway epithelium brushing,16.6537,S,M0,DGM-02164,smoking status: COPD smoker
+14,GSM2890611,small airway epithelium brushing,11.8497,S,M12,DGM-02164,smoking status: COPD smoker
+15,GSM2890612,small airway epithelium brushing,8.18333,S,M3,DGM-02164,smoking status: COPD smoker
+16,GSM2890613,small airway epithelium brushing,13.3155,S,M6,DGM-02164,smoking status: COPD smoker
+17,GSM2890614,small airway epithelium brushing,10.093,S,M12,DGM-10130,smoking status: COPD smoker
+18,GSM2890615,small airway epithelium brushing,10.429,S,M3,DGM-10130,smoking status: COPD smoker
+19,GSM2890616,small airway epithelium brushing,9.28072,S,M6,DGM-10130,smoking status: COPD smoker
+20,GSM2890617,small airway epithelium brushing,11.3406,S,M0,DGM-10132,smoking status: COPD smoker
+21,GSM2890618,small airway epithelium brushing,9.82208,S,M12,DGM-10132,smoking status: COPD smoker
+22,GSM2890619,small airway epithelium brushing,11.1902,S,M3,DGM-10132,smoking status: COPD smoker
+23,GSM2890620,small airway epithelium brushing,8.63313,S,M6,DGM-10132,smoking status: COPD smoker
+24,GSM2890621,small airway epithelium brushing,14.5663,S,M0,DGM-10145,smoking status: COPD smoker
+25,GSM2890622,small airway epithelium brushing,12.0713,S,M0,DGM-10157,smoking status: COPD smoker
+26,GSM2890623,small airway epithelium brushing,9.96248,S,M12,DGM-10157,smoking status: COPD smoker
+27,GSM2890624,small airway epithelium brushing,10.0609,S,M3,DGM-10157,smoking status: COPD smoker
+28,GSM2890625,small airway epithelium brushing,9.48905,S,M6,DGM-10157,smoking status: COPD smoker
+29,GSM2890626,small airway epithelium brushing,12.2161,S,M0,DGM-10262,smoking status: COPD smoker
+30,GSM2890627,small airway epithelium brushing,7.8404,S,M3,DGM-10262,smoking status: COPD smoker
+31,GSM2890628,small airway epithelium brushing,12.9888,S,M6,DGM-10262,smoking status: COPD smoker
+32,GSM2890629,small airway epithelium brushing,14.6827,S,M0,DGM-10283,smoking status: COPD smoker
+33,GSM2890630,small airway epithelium brushing,17.1713,S,M12,DGM-10283,smoking status: COPD smoker
+34,GSM2890631,small airway epithelium brushing,9.33346,S,M3,DGM-10283,smoking status: COPD smoker
+35,GSM2890632,small airway epithelium brushing,12.5105,S,M6,DGM-10283,smoking status: COPD smoker
+36,GSM2890633,small airway epithelium brushing,12.6587,S,M0,DGM-10286,smoking status: COPD smoker
+37,GSM2890634,small airway epithelium brushing,16.4686,S,M12,DGM-10286,smoking status: COPD smoker
+38,GSM2890635,small airway epithelium brushing,10.9217,S,M6,DGM-10286,smoking status: COPD smoker
+39,GSM2890636,small airway epithelium brushing,13.5062,S,M0,DGM-10329,smoking status: COPD smoker
+40,GSM2890637,small airway epithelium brushing,15.3346,S,M0,DGM-10335,smoking status: COPD smoker
+41,GSM2890638,small airway epithelium brushing,16.7941,S,M12,DGM-10335,smoking status: COPD smoker
+42,GSM2890639,small airway epithelium brushing,8.49569,S,M3,DGM-10335,smoking status: COPD smoker
+43,GSM2890640,small airway epithelium brushing,12.4186,S,M6,DGM-10335,smoking status: COPD smoker
+44,GSM2890641,small airway epithelium brushing,12.9627,S,M12,DGM-10340,smoking status: COPD smoker
+45,GSM2890642,small airway epithelium brushing,8.69741,S,M3,DGM-10340,smoking status: COPD smoker
+46,GSM2890643,small airway epithelium brushing,10.4313,S,M6,DGM-10340,smoking status: COPD smoker
+47,GSM2890644,small airway epithelium brushing,14.9636,S,M0,DGM-10359,smoking status: COPD smoker
+48,GSM2890645,small airway epithelium brushing,11.5319,S,M0,DGM-10401,smoking status: COPD smoker
+49,GSM2890646,small airway epithelium brushing,13.1498,S,M0,DGM-10406,smoking status: COPD smoker
+50,GSM2890647,small airway epithelium brushing,10.1548,S,M0,DGM-10421,smoking status: COPD smoker
+51,GSM2890648,small airway epithelium brushing,9.37128,S,M3,DGM-10421,smoking status: COPD smoker
+52,GSM2890649,small airway epithelium brushing,11.2985,S,M0,DGM-10504,smoking status: COPD smoker
+53,GSM2890650,small airway epithelium brushing,14.9675,S,M12,DGM-10504,smoking status: COPD smoker
+54,GSM2890651,small airway epithelium brushing,11.2263,S,M6,DGM-10504,smoking status: COPD smoker
+55,GSM2890652,small airway epithelium brushing,11.0855,S,M0,DGM-10539,smoking status: COPD smoker
+56,GSM2890653,small airway epithelium brushing,10.8526,S,M3,DGM-10539,smoking status: COPD smoker
+57,GSM2890654,small airway epithelium brushing,9.92244,S,M0,DGM-10549,smoking status: COPD smoker
+58,GSM2890655,small airway epithelium brushing,10.1702,S,M3,DGM-10549,smoking status: COPD smoker
+59,GSM2890656,small airway epithelium brushing,9.52,S,M6,DGM-10549,smoking status: COPD smoker
+60,GSM2890657,small airway epithelium brushing,10.7917,S,M0,DGM-10635,smoking status: COPD smoker
+61,GSM2890658,small airway epithelium brushing,9.68262,S,M0,DGM-10727,smoking status: COPD smoker
+62,GSM2890659,small airway epithelium brushing,9.06457,S,M0,DGM-10744,smoking status: COPD smoker
+63,GSM2890660,small airway epithelium brushing,8.28648,S,M0,DGM-10786,smoking status: COPD smoker
+64,GSM2890661,small airway epithelium brushing,15.0325,S,M0,DGM-10794,smoking status: COPD smoker
+65,GSM2890662,small airway epithelium brushing,8.64333,S,M12,DGM-10794,smoking status: COPD smoker
+66,GSM2890663,small airway epithelium brushing,7.58361,S,M3,DGM-10794,smoking status: COPD smoker
+67,GSM2890664,small airway epithelium brushing,12.8892,S,M6,DGM-10794,smoking status: COPD smoker
+68,GSM2890665,small airway epithelium brushing,10.5453,S,M0,DGM-10799,smoking status: COPD smoker
+69,GSM2890666,small airway epithelium brushing,7.6424,S,M0,DGM-10800,smoking status: COPD smoker
+70,GSM2890667,small airway epithelium brushing,7.58361,S,M12,DGM-10800,smoking status: COPD smoker
+71,GSM2890668,small airway epithelium brushing,15.7323,S,M3,DGM-10800,smoking status: COPD smoker
+72,GSM2890669,small airway epithelium brushing,7.85006,S,M6,DGM-10800,smoking status: COPD smoker
+73,GSM2890670,small airway epithelium brushing,10.0807,S,M0,DGM-10824,smoking status: COPD smoker
+74,GSM2890671,small airway epithelium brushing,12.4186,S,M0,DGM-10946,smoking status: COPD smoker
+75,GSM2890672,small airway epithelium brushing,6.87654,S,M0,DGM-10984,smoking status: COPD smoker
+76,GSM2890673,small airway epithelium brushing,8.31083,S,M12,DGM-10984,smoking status: COPD smoker
+77,GSM2890674,small airway epithelium brushing,15.4879,S,M3,DGM-10984,smoking status: COPD smoker
+78,GSM2890675,small airway epithelium brushing,9.372,S,M6,DGM-10984,smoking status: COPD smoker
+79,GSM2890676,small airway epithelium brushing,7.74676,S,M0,DGM-10988,smoking status: COPD smoker
+80,GSM2890677,small airway epithelium brushing,8.05006,S,M0,DGM-11001,smoking status: COPD smoker
+81,GSM2890678,small airway epithelium brushing,11.6462,S,M3,DGM-11001,smoking status: COPD smoker
+82,GSM2890679,small airway epithelium brushing,12.3847,S,M6,DGM-11001,smoking status: COPD smoker
+83,GSM2890680,small airway epithelium brushing,7.80533,S,M0,DGM-11007,smoking status: COPD smoker
+84,GSM2890681,small airway epithelium brushing,11.117,S,M0,DGM-11010,smoking status: COPD smoker
+85,GSM2890682,small airway epithelium brushing,9.20433,S,M0,DGM-11030,smoking status: COPD smoker
+86,GSM2890683,small airway epithelium brushing,9.52,S,M0,DGM-11060,smoking status: COPD smoker
+87,GSM2890684,small airway epithelium brushing,9.09289,S,M0,DGM-11061,smoking status: COPD smoker
+88,GSM2890685,small airway epithelium brushing,8.05006,S,M0,DGM-11077,smoking status: COPD smoker
+89,GSM2890686,small airway epithelium brushing,7.07278,S,M12,DGM-11077,smoking status: COPD smoker
+90,GSM2890687,small airway epithelium brushing,10.5453,S,M3,DGM-11077,smoking status: COPD smoker
+91,GSM2890688,small airway epithelium brushing,10.9413,S,M6,DGM-11077,smoking status: COPD smoker
+92,GSM2890689,small airway epithelium brushing,7.53256,S,M0,DGM-11122,smoking status: COPD smoker
+93,GSM2890690,small airway epithelium brushing,8.05389,S,M12,DGM-11122,smoking status: COPD smoker
+94,GSM2890691,small airway epithelium brushing,15.7228,S,M3,DGM-11122,smoking status: COPD smoker
+95,GSM2890692,small airway epithelium brushing,9.432,S,M6,DGM-11122,smoking status: COPD smoker
+96,GSM2890693,small airway epithelium brushing,9.05913,S,M0,DGM-11163,smoking status: COPD smoker
+97,GSM2890694,small airway epithelium brushing,8.95722,S,M12,DGM-11163,smoking status: COPD smoker
+98,GSM2890695,small airway epithelium brushing,12.3793,S,M3,DGM-11163,smoking status: COPD smoker
+99,GSM2890696,small airway epithelium brushing,8.90639,S,M6,DGM-11163,smoking status: COPD smoker
+100,GSM2890697,small airway epithelium brushing,16.0026,S,M0,DGM-11184,smoking status: COPD smoker
+101,GSM2890698,small airway epithelium brushing,10.963,S,M0,DGM-11192,smoking status: COPD smoker
+102,GSM2890699,small airway epithelium brushing,12.27,S,M12,DGM-11192,smoking status: COPD smoker
+103,GSM2890700,small airway epithelium brushing,9.372,S,M3,DGM-11192,smoking status: COPD smoker
+104,GSM2890701,small airway epithelium brushing,12.8487,S,M6,DGM-11192,smoking status: COPD smoker
+105,GSM2890702,small airway epithelium brushing,16.0849,S,M0,DGM-11261,smoking status: COPD smoker
+106,GSM2890703,small airway epithelium brushing,15.7228,S,M0,DGM-11268,smoking status: COPD smoker
+107,GSM2890704,small airway epithelium brushing,9.13767,S,M3,DGM-11268,smoking status: COPD smoker
+108,GSM2890705,small airway epithelium brushing,17.1713,S,M0,DGM-11269,smoking status: COPD smoker
+109,GSM2890706,small airway epithelium brushing,7.55306,S,M12,DGM-11269,smoking status: COPD smoker
+110,GSM2890707,small airway epithelium brushing,10.1467,S,M3,DGM-11269,smoking status: COPD smoker
+111,GSM2890708,small airway epithelium brushing,15.1681,S,M6,DGM-11269,smoking status: COPD smoker
+112,GSM2890709,small airway epithelium brushing,16.6767,S,M0,DGM-11270,smoking status: COPD smoker
+113,GSM2890710,small airway epithelium brushing,16.4406,S,M0,DGM-11276,smoking status: COPD smoker
+114,GSM2890711,small airway epithelium brushing,8.09372,S,M3,DGM-11276,smoking status: COPD smoker
+115,GSM2890712,small airway epithelium brushing,16.7486,S,M0,DGM-11298,smoking status: COPD smoker
+116,GSM2890713,small airway epithelium brushing,10.0831,S,M12,DGM-11298,smoking status: COPD smoker
+117,GSM2890714,small airway epithelium brushing,8.65133,S,M3,DGM-11298,smoking status: COPD smoker
+118,GSM2890715,small airway epithelium brushing,10.0612,S,M6,DGM-11298,smoking status: COPD smoker
+119,GSM2890716,small airway epithelium brushing,10.9413,S,M0,DGM-11379,smoking status: COPD smoker
+120,GSM2890717,small airway epithelium brushing,13.6434,S,M3,DGM-11379,smoking status: COPD smoker
+121,GSM2890718,small airway epithelium brushing,7.5825,S,M6,DGM-11379,smoking status: COPD smoker
+122,GSM2890719,small airway epithelium brushing,9.345,S,M0,DGM-11463,smoking status: COPD smoker
+123,GSM2890720,small airway epithelium brushing,15.07,S,M0,DGM-11465,smoking status: COPD smoker
+124,GSM2890721,small airway epithelium brushing,9.45972,S,M12,DGM-11465,smoking status: COPD smoker
+125,GSM2890722,small airway epithelium brushing,7.29583,S,M3,DGM-11465,smoking status: COPD smoker
+126,GSM2890723,small airway epithelium brushing,10.2431,S,M6,DGM-11465,smoking status: COPD smoker
+127,GSM2890724,small airway epithelium brushing,12.802,S,M0,DGM-11613,smoking status: COPD smoker
+128,GSM2890725,small airway epithelium brushing,9.23278,S,M3,DGM-11613,smoking status: COPD smoker
+129,GSM2890726,small airway epithelium brushing,12.0894,S,M6,DGM-11613,smoking status: COPD smoker
+130,GSM2890727,small airway epithelium brushing,13.7552,S,M0,DGM-11738,smoking status: COPD smoker
+131,GSM2890728,small airway epithelium brushing,14.7833,S,M0,DGM-11779,smoking status: COPD smoker
+132,GSM2890729,small airway epithelium brushing,12.0688,NS,M0,DGM-10123,smoking status: nonsmoker
+133,GSM2890730,small airway epithelium brushing,11.5995,NS,M0,DGM-10159,smoking status: nonsmoker
+134,GSM2890731,small airway epithelium brushing,15.0951,NS,M0,DGM-10254,smoking status: nonsmoker
+135,GSM2890732,small airway epithelium brushing,14.9945,NS,M0,DGM-10288,smoking status: nonsmoker
+136,GSM2890733,small airway epithelium brushing,15.3911,NS,M0,DGM-10380,smoking status: nonsmoker
+137,GSM2890734,small airway epithelium brushing,14.9636,NS,M0,DGM-10343,smoking status: nonsmoker
+138,GSM2890735,small airway epithelium brushing,10.2294,NS,M0,DGM-10270,smoking status: nonsmoker
+139,GSM2890736,small airway epithelium brushing,10.3345,NS,M0,DGM-10194,smoking status: nonsmoker
+140,GSM2890737,small airway epithelium brushing,11.5415,NS,M0,DGM-10565,smoking status: nonsmoker
+141,GSM2890738,small airway epithelium brushing,10.2226,NS,M0,DGM-10500,smoking status: nonsmoker
+142,GSM2890739,small airway epithelium brushing,8.24759,NS,M0,DGM-10503,smoking status: nonsmoker
+143,GSM2890740,small airway epithelium brushing,11.581,NS,M0,DGM-10475,smoking status: nonsmoker
+144,GSM2890741,small airway epithelium brushing,10.3101,NS,M0,DGM-10662,smoking status: nonsmoker
+145,GSM2890742,small airway epithelium brushing,7.8351,NS,M0,DGM-01774,smoking status: nonsmoker
+146,GSM2890743,small airway epithelium brushing,11.9319,NS,M0,DGM-10226,smoking status: nonsmoker
+147,GSM2890744,small airway epithelium brushing,11.2851,NS,M0,DGM-10284,smoking status: nonsmoker
+148,GSM2890745,small airway epithelium brushing,14.854,NS,M0,DGM-10383,smoking status: nonsmoker
+149,GSM2890746,small airway epithelium brushing,13.1804,NS,M0,DGM-10322,smoking status: nonsmoker
+150,GSM2890747,small airway epithelium brushing,11.3346,NS,M0,DGM-10418,smoking status: nonsmoker
+151,GSM2890748,small airway epithelium brushing,9.93744,NS,M0,DGM-10632,smoking status: nonsmoker
+152,GSM2890749,small airway epithelium brushing,10.0341,NS,M0,DGM-10378,smoking status: nonsmoker
+153,GSM2890750,small airway epithelium brushing,10.2711,NS,M0,DGM-10447,smoking status: nonsmoker
+154,GSM2890751,small airway epithelium brushing,10.1631,NS,M0,DGM-10706,smoking status: nonsmoker
+155,GSM2890752,small airway epithelium brushing,10.1631,NS,M0,DGM-10707,smoking status: nonsmoker
+156,GSM2890753,small airway epithelium brushing,9.02424,NS,M0,DGM-10330,smoking status: nonsmoker
+157,GSM2890754,small airway epithelium brushing,7.98287,NS,M0,DGM-00342,smoking status: nonsmoker
+158,GSM2890755,small airway epithelium brushing,7.16333,NS,M12,DGM-01774,smoking status: nonsmoker
+159,GSM2890756,small airway epithelium brushing,11.6462,NS,M12,DGM-10159,smoking status: nonsmoker
+160,GSM2890757,small airway epithelium brushing,7.7004,NS,M3,DGM-10475,smoking status: nonsmoker
+161,GSM2890758,small airway epithelium brushing,8.13771,NS,M6,DGM-10500,smoking status: nonsmoker
+162,GSM2890759,small airway epithelium brushing,9.64144,NS,M12,DGM-10503,smoking status: nonsmoker
+163,GSM2890760,small airway epithelium brushing,8.65133,NS,M12,DGM-10565,smoking status: nonsmoker
+164,GSM2890761,small airway epithelium brushing,8.48306,NS,M12,DGM-00342,smoking status: nonsmoker
+165,GSM2890762,small airway epithelium brushing,16.6537,NS,M3,DGM-00342,smoking status: nonsmoker
+166,GSM2890763,small airway epithelium brushing,10.2911,NS,M6,DGM-00342,smoking status: nonsmoker
+167,GSM2890764,small airway epithelium brushing,16.5631,NS,M3,DGM-01774,smoking status: nonsmoker
+168,GSM2890765,small airway epithelium brushing,9.46467,NS,M6,DGM-01774,smoking status: nonsmoker
+169,GSM2890766,small airway epithelium brushing,15.1326,NS,M12,DGM-10123,smoking status: nonsmoker
+170,GSM2890767,small airway epithelium brushing,11.2442,NS,M3,DGM-10123,smoking status: nonsmoker
+171,GSM2890768,small airway epithelium brushing,11.1139,NS,M6,DGM-10123,smoking status: nonsmoker
+172,GSM2890769,small airway epithelium brushing,10.9224,NS,M3,DGM-10159,smoking status: nonsmoker
+173,GSM2890770,small airway epithelium brushing,8.44635,NS,M6,DGM-10159,smoking status: nonsmoker
+174,GSM2890771,small airway epithelium brushing,15.9119,NS,M12,DGM-10161,smoking status: nonsmoker
+175,GSM2890772,small airway epithelium brushing,11.5633,NS,M3,DGM-10161,smoking status: nonsmoker
+176,GSM2890773,small airway epithelium brushing,11.7128,NS,M6,DGM-10161,smoking status: nonsmoker
+177,GSM2890774,small airway epithelium brushing,12.8707,NS,M12,DGM-10194,smoking status: nonsmoker
+178,GSM2890775,small airway epithelium brushing,9.50197,NS,M6,DGM-10194,smoking status: nonsmoker
+179,GSM2890776,small airway epithelium brushing,10.4087,NS,M3,DGM-10226,smoking status: nonsmoker
+180,GSM2890777,small airway epithelium brushing,13.1964,NS,M6,DGM-10226,smoking status: nonsmoker
+181,GSM2890778,small airway epithelium brushing,15.3347,NS,M12,DGM-10254,smoking status: nonsmoker
+182,GSM2890779,small airway epithelium brushing,11.94,NS,M3,DGM-10254,smoking status: nonsmoker
+183,GSM2890780,small airway epithelium brushing,12.3761,NS,M6,DGM-10254,smoking status: nonsmoker
+184,GSM2890781,small airway epithelium brushing,14.036,NS,M0,DGM-10261,smoking status: nonsmoker
+185,GSM2890782,small airway epithelium brushing,12.3847,NS,M12,DGM-10261,smoking status: nonsmoker
+186,GSM2890783,small airway epithelium brushing,11.5633,NS,M3,DGM-10261,smoking status: nonsmoker
+187,GSM2890784,small airway epithelium brushing,12.8509,NS,M6,DGM-10261,smoking status: nonsmoker
+188,GSM2890785,small airway epithelium brushing,13.5308,NS,M12,DGM-10270,smoking status: nonsmoker
+189,GSM2890786,small airway epithelium brushing,10.6715,NS,M3,DGM-10270,smoking status: nonsmoker
+190,GSM2890787,small airway epithelium brushing,9.34497,NS,M6,DGM-10270,smoking status: nonsmoker
+191,GSM2890788,small airway epithelium brushing,12.8707,NS,M12,DGM-10284,smoking status: nonsmoker
+192,GSM2890789,small airway epithelium brushing,9.02424,NS,M3,DGM-10284,smoking status: nonsmoker
+193,GSM2890790,small airway epithelium brushing,11.7855,NS,M6,DGM-10284,smoking status: nonsmoker
+194,GSM2890791,small airway epithelium brushing,17.1713,NS,M12,DGM-10288,smoking status: nonsmoker
+195,GSM2890792,small airway epithelium brushing,8.99291,NS,M3,DGM-10288,smoking status: nonsmoker
+196,GSM2890793,small airway epithelium brushing,11.6271,NS,M6,DGM-10288,smoking status: nonsmoker
+197,GSM2890794,small airway epithelium brushing,16.4406,NS,M12,DGM-10322,smoking status: nonsmoker
+198,GSM2890795,small airway epithelium brushing,9.2309,NS,M3,DGM-10322,smoking status: nonsmoker
+199,GSM2890796,small airway epithelium brushing,11.066,NS,M6,DGM-10322,smoking status: nonsmoker
+200,GSM2890797,small airway epithelium brushing,11.117,NS,M3,DGM-10330,smoking status: nonsmoker
+201,GSM2890798,small airway epithelium brushing,16.7297,NS,M12,DGM-10343,smoking status: nonsmoker
+202,GSM2890799,small airway epithelium brushing,8.28413,NS,M3,DGM-10343,smoking status: nonsmoker
+203,GSM2890800,small airway epithelium brushing,12.3405,NS,M6,DGM-10343,smoking status: nonsmoker
+204,GSM2890801,small airway epithelium brushing,7.05932,NS,M6,DGM-10378,smoking status: nonsmoker
+205,GSM2890802,small airway epithelium brushing,14.7897,NS,M12,DGM-10380,smoking status: nonsmoker
+206,GSM2890803,small airway epithelium brushing,9.09537,NS,M3,DGM-10380,smoking status: nonsmoker
+207,GSM2890804,small airway epithelium brushing,11.8691,NS,M6,DGM-10380,smoking status: nonsmoker
+208,GSM2890805,small airway epithelium brushing,16.6781,NS,M12,DGM-10383,smoking status: nonsmoker
+209,GSM2890806,small airway epithelium brushing,9.64815,NS,M3,DGM-10383,smoking status: nonsmoker
+210,GSM2890807,small airway epithelium brushing,12.3717,NS,M6,DGM-10383,smoking status: nonsmoker
+211,GSM2890808,small airway epithelium brushing,9.51889,NS,M12,DGM-10447,smoking status: nonsmoker
+212,GSM2890809,small airway epithelium brushing,10.9115,NS,M3,DGM-10447,smoking status: nonsmoker
+213,GSM2890810,small airway epithelium brushing,8.98063,NS,M6,DGM-10447,smoking status: nonsmoker
+214,GSM2890811,small airway epithelium brushing,10.098,NS,M12,DGM-10475,smoking status: nonsmoker
+215,GSM2890812,small airway epithelium brushing,16.7486,NS,M6,DGM-10475,smoking status: nonsmoker
+216,GSM2890813,small airway epithelium brushing,9.61878,NS,M12,DGM-10500,smoking status: nonsmoker
+217,GSM2890814,small airway epithelium brushing,11.9855,NS,M3,DGM-10500,smoking status: nonsmoker
+218,GSM2890815,small airway epithelium brushing,11.1034,NS,M3,DGM-10503,smoking status: nonsmoker
+219,GSM2890816,small airway epithelium brushing,8.02716,NS,M6,DGM-10503,smoking status: nonsmoker
+220,GSM2890817,small airway epithelium brushing,10.3151,NS,M3,DGM-10565,smoking status: nonsmoker
+221,GSM2890818,small airway epithelium brushing,7.7169,NS,M6,DGM-10565,smoking status: nonsmoker
+222,GSM2890819,small airway epithelium brushing,9.41611,NS,M12,DGM-10568,smoking status: nonsmoker
+223,GSM2890820,small airway epithelium brushing,12.2072,NS,M3,DGM-10568,smoking status: nonsmoker
+224,GSM2890821,small airway epithelium brushing,8.17597,NS,M6,DGM-10568,smoking status: nonsmoker
+225,GSM2890822,small airway epithelium brushing,9.97959,NS,M3,DGM-10632,smoking status: nonsmoker
+226,GSM2890823,small airway epithelium brushing,14.7833,NS,M12,DGM-10662,smoking status: nonsmoker
+227,GSM2890824,small airway epithelium brushing,9.12468,NS,M3,DGM-10662,smoking status: nonsmoker
+228,GSM2890825,small airway epithelium brushing,10.3008,NS,M12,DGM-10706,smoking status: nonsmoker
+229,GSM2890826,small airway epithelium brushing,9.64144,NS,M12,DGM-10707,smoking status: nonsmoker
+230,GSM2890827,small airway epithelium brushing,11.6226,S,M0,DGM-10213,smoking status: smoker
+231,GSM2890828,small airway epithelium brushing,8.99291,S,M0,DGM-10435,smoking status: smoker
+232,GSM2890829,small airway epithelium brushing,11.591,S,M0,DGM-10661,smoking status: smoker
+233,GSM2890830,small airway epithelium brushing,12.1933,S,M0,DGM-10573,smoking status: smoker
+234,GSM2890831,small airway epithelium brushing,9.28516,S,M0,DGM-10768,smoking status: smoker
+235,GSM2890832,small airway epithelium brushing,12.8509,S,M0,DGM-10886,smoking status: smoker
+236,GSM2890833,small airway epithelium brushing,12.8993,S,M0,DGM-10901,smoking status: smoker
+237,GSM2890834,small airway epithelium brushing,11.7788,S,M0,DGM-10869,smoking status: smoker
+238,GSM2890835,small airway epithelium brushing,11.9855,S,M0,DGM-10851,smoking status: smoker
+239,GSM2890836,small airway epithelium brushing,11.581,S,M0,DGM-10731,smoking status: smoker
+240,GSM2890837,small airway epithelium brushing,12.3405,S,M0,DGM-10906,smoking status: smoker
+241,GSM2890838,small airway epithelium brushing,12.2161,S,M0,DGM-10704,smoking status: smoker
+242,GSM2890839,small airway epithelium brushing,8.05006,S,M0,DGM-11068,smoking status: smoker
+243,GSM2890840,small airway epithelium brushing,7.96574,S,M0,DGM-11021,smoking status: smoker
+244,GSM2890841,small airway epithelium brushing,7.53256,S,M0,DGM-10986,smoking status: smoker
+245,GSM2890842,small airway epithelium brushing,7.86268,S,M0,DGM-10922,smoking status: smoker
+246,GSM2890843,small airway epithelium brushing,8.02716,S,M0,DGM-11113,smoking status: smoker
+247,GSM2890844,small airway epithelium brushing,11.651,S,M0,DGM-10180,smoking status: smoker
+248,GSM2890845,small airway epithelium brushing,14.7791,S,M0,DGM-10217,smoking status: smoker
+249,GSM2890846,small airway epithelium brushing,14.4927,S,M0,DGM-10163,smoking status: smoker
+250,GSM2890847,small airway epithelium brushing,12.1636,S,M0,DGM-10225,smoking status: smoker
+251,GSM2890848,small airway epithelium brushing,14.231,S,M0,DGM-10316,smoking status: smoker
+252,GSM2890849,small airway epithelium brushing,15.0429,S,M0,DGM-10282,smoking status: smoker
+253,GSM2890850,small airway epithelium brushing,15.3265,S,M0,DGM-10351,smoking status: smoker
+254,GSM2890851,small airway epithelium brushing,15.3346,S,M0,DGM-10201,smoking status: smoker
+255,GSM2890852,small airway epithelium brushing,15.0951,S,M0,DGM-10369,smoking status: smoker
+256,GSM2890853,small airway epithelium brushing,15.1362,S,M0,DGM-10358,smoking status: smoker
+257,GSM2890854,small airway epithelium brushing,13.1498,S,M0,DGM-10374,smoking status: smoker
+258,GSM2890855,small airway epithelium brushing,9.49961,S,M0,DGM-10368,smoking status: smoker
+259,GSM2890856,small airway epithelium brushing,12.8993,S,M0,DGM-10257,smoking status: smoker
+260,GSM2890857,small airway epithelium brushing,11.3735,S,M0,DGM-10518,smoking status: smoker
+261,GSM2890858,small airway epithelium brushing,10.6689,S,M0,DGM-10395,smoking status: smoker
+262,GSM2890859,small airway epithelium brushing,10.1912,S,M0,DGM-10423,smoking status: smoker
+263,GSM2890860,small airway epithelium brushing,10.9334,S,M0,DGM-10595,smoking status: smoker
+264,GSM2890861,small airway epithelium brushing,10.9745,S,M0,DGM-10412,smoking status: smoker
+265,GSM2890862,small airway epithelium brushing,11.1089,S,M0,DGM-10537,smoking status: smoker
+266,GSM2890863,small airway epithelium brushing,11.3921,S,M0,DGM-10685,smoking status: smoker
+267,GSM2890864,small airway epithelium brushing,10.2711,S,M0,DGM-10519,smoking status: smoker
+268,GSM2890865,small airway epithelium brushing,8.63313,S,M0,DGM-10569,smoking status: smoker
+269,GSM2890866,small airway epithelium brushing,8.87513,S,M0,DGM-10698,smoking status: smoker
+270,GSM2890867,small airway epithelium brushing,9.37128,S,M0,DGM-10571,smoking status: smoker
+271,GSM2890868,small airway epithelium brushing,10.5715,S,M0,DGM-10774,smoking status: smoker
+272,GSM2890869,small airway epithelium brushing,10.7065,S,M0,DGM-10638,smoking status: smoker
+273,GSM2890870,small airway epithelium brushing,11.8937,S,M0,DGM-00221,smoking status: smoker
+274,GSM2890871,small airway epithelium brushing,10.9115,S,M0,DGM-10844,smoking status: smoker
+275,GSM2890872,small airway epithelium brushing,12.0965,S,M0,DGM-10672,smoking status: smoker
+276,GSM2890873,small airway epithelium brushing,12.9914,S,M0,DGM-10640,smoking status: smoker
+277,GSM2890874,small airway epithelium brushing,11.835,S,M0,DGM-10538,smoking status: smoker
+278,GSM2890875,small airway epithelium brushing,11.1271,S,M0,DGM-10732,smoking status: smoker
+279,GSM2890876,small airway epithelium brushing,12.3405,S,M0,DGM-10846,smoking status: smoker
+280,GSM2890877,small airway epithelium brushing,11.211,S,M0,DGM-10880,smoking status: smoker
+281,GSM2890878,small airway epithelium brushing,11.1034,S,M0,DGM-10919,smoking status: smoker
+282,GSM2890879,small airway epithelium brushing,10.3101,S,M0,DGM-10361,smoking status: smoker
+283,GSM2890880,small airway epithelium brushing,10.3151,S,M0,DGM-10721,smoking status: smoker
+284,GSM2890881,small airway epithelium brushing,10.2312,S,M0,DGM-10907,smoking status: smoker
+285,GSM2890882,small airway epithelium brushing,10.2312,S,M0,DGM-10757,smoking status: smoker
+286,GSM2890883,small airway epithelium brushing,11.7855,S,M0,DGM-10625,smoking status: smoker
+287,GSM2890884,small airway epithelium brushing,10.7292,S,M0,DGM-10891,smoking status: smoker
+288,GSM2890885,small airway epithelium brushing,9.27651,S,M0,DGM-10808,smoking status: smoker
+289,GSM2890886,small airway epithelium brushing,9.09289,S,M0,DGM-11066,smoking status: smoker
+290,GSM2890887,small airway epithelium brushing,8.17033,S,M0,DGM-11038,smoking status: smoker
+291,GSM2890888,small airway epithelium brushing,9.55132,S,M0,DGM-11008,smoking status: smoker
+292,GSM2890889,small airway epithelium brushing,8.98063,S,M0,DGM-11047,smoking status: smoker
+293,GSM2890890,small airway epithelium brushing,9.55132,S,M0,DGM-11062,smoking status: smoker
+294,GSM2890891,small airway epithelium brushing,7.17432,S,M0,DGM-10963,smoking status: smoker
+295,GSM2890892,small airway epithelium brushing,7.33748,S,M0,DGM-11111,smoking status: smoker
+296,GSM2890893,small airway epithelium brushing,11.8239,S,M0,DGM-10170,smoking status: smoker
+297,GSM2890894,small airway epithelium brushing,16.5631,S,M0,DGM-00127,smoking status: smoker
+298,GSM2890895,small airway epithelium brushing,9.71313,S,M0,DGM-10948,smoking status: smoker
+299,GSM2890896,small airway epithelium brushing,12.7672,S,M12,DGM-00127,smoking status: smoker
+300,GSM2890897,small airway epithelium brushing,15.7228,S,M12,DGM-10163,smoking status: smoker
+301,GSM2890898,small airway epithelium brushing,9.80997,S,M3,DGM-10163,smoking status: smoker
+302,GSM2890899,small airway epithelium brushing,12.9687,S,M6,DGM-10163,smoking status: smoker
+303,GSM2890900,small airway epithelium brushing,9.86856,S,M3,DGM-10180,smoking status: smoker
+304,GSM2890901,small airway epithelium brushing,10.1702,S,M6,DGM-10180,smoking status: smoker
+305,GSM2890902,small airway epithelium brushing,10.7308,S,M12,DGM-10201,smoking status: smoker
+306,GSM2890903,small airway epithelium brushing,10.3946,S,M3,DGM-10201,smoking status: smoker
+307,GSM2890904,small airway epithelium brushing,11.581,S,M6,DGM-10201,smoking status: smoker
+308,GSM2890905,small airway epithelium brushing,11.6462,S,M12,DGM-10213,smoking status: smoker
+309,GSM2890906,small airway epithelium brushing,10.9334,S,M3,DGM-10213,smoking status: smoker
+310,GSM2890907,small airway epithelium brushing,10.5141,S,M6,DGM-10213,smoking status: smoker
+311,GSM2890908,small airway epithelium brushing,17.7627,S,M12,DGM-10217,smoking status: smoker
+312,GSM2890909,small airway epithelium brushing,9.06457,S,M3,DGM-10217,smoking status: smoker
+313,GSM2890910,small airway epithelium brushing,12.5105,S,M6,DGM-10217,smoking status: smoker
+314,GSM2890911,small airway epithelium brushing,10.6877,S,M3,DGM-10225,smoking status: smoker
+315,GSM2890912,small airway epithelium brushing,10.6877,S,M6,DGM-10225,smoking status: smoker
+316,GSM2890913,small airway epithelium brushing,16.6997,S,M12,DGM-10282,smoking status: smoker
+317,GSM2890914,small airway epithelium brushing,10.3946,S,M3,DGM-10282,smoking status: smoker
+318,GSM2890915,small airway epithelium brushing,11.9855,S,M6,DGM-10282,smoking status: smoker
+319,GSM2890916,small airway epithelium brushing,9.64151,S,M3,DGM-10316,smoking status: smoker
+320,GSM2890917,small airway epithelium brushing,11.8878,S,M6,DGM-10316,smoking status: smoker
+321,GSM2890918,small airway epithelium brushing,17.0845,S,M12,DGM-10351,smoking status: smoker
+322,GSM2890919,small airway epithelium brushing,10.3564,S,M3,DGM-10351,smoking status: smoker
+323,GSM2890920,small airway epithelium brushing,11.8691,S,M6,DGM-10351,smoking status: smoker
+324,GSM2890921,small airway epithelium brushing,16.7297,S,M12,DGM-10358,smoking status: smoker
+325,GSM2890922,small airway epithelium brushing,9.84708,S,M6,DGM-10368,smoking status: smoker
+326,GSM2890923,small airway epithelium brushing,16.7297,S,M12,DGM-10369,smoking status: smoker
+327,GSM2890924,small airway epithelium brushing,8.49648,S,M3,DGM-10369,smoking status: smoker
+328,GSM2890925,small airway epithelium brushing,11.6378,S,M6,DGM-10369,smoking status: smoker
+329,GSM2890926,small airway epithelium brushing,13.3921,S,M12,DGM-10374,smoking status: smoker
+330,GSM2890927,small airway epithelium brushing,9.08466,S,M3,DGM-10374,smoking status: smoker
+331,GSM2890928,small airway epithelium brushing,11.066,S,M6,DGM-10374,smoking status: smoker
+332,GSM2890929,small airway epithelium brushing,8.87513,S,M3,DGM-10395,smoking status: smoker
+333,GSM2890930,small airway epithelium brushing,9.81362,S,M6,DGM-10395,smoking status: smoker
+334,GSM2890931,small airway epithelium brushing,8.52019,S,M3,DGM-10518,smoking status: smoker
+335,GSM2890932,small airway epithelium brushing,10.3101,S,M6,DGM-10518,smoking status: smoker
+336,GSM2890933,small airway epithelium brushing,9.60867,S,M12,DGM-10519,smoking status: smoker
+337,GSM2890934,small airway epithelium brushing,11.3143,S,M3,DGM-10519,smoking status: smoker
+338,GSM2890935,small airway epithelium brushing,8.17597,S,M6,DGM-10519,smoking status: smoker
+339,GSM2890936,small airway epithelium brushing,9.46467,S,M12,DGM-10522,smoking status: smoker
+340,GSM2890937,small airway epithelium brushing,11.8878,S,M3,DGM-10522,smoking status: smoker
+341,GSM2890938,small airway epithelium brushing,8.77947,S,M6,DGM-10522,smoking status: smoker
+342,GSM2890939,small airway epithelium brushing,9.68978,S,M12,DGM-10569,smoking status: smoker
+343,GSM2890940,small airway epithelium brushing,9.82208,S,M6,DGM-10569,smoking status: smoker
+344,GSM2890941,small airway epithelium brushing,9.81362,S,M3,DGM-10571,smoking status: smoker
+345,GSM2890942,small airway epithelium brushing,13.11,S,M12,DGM-10573,smoking status: smoker
+346,GSM2890943,small airway epithelium brushing,7.70683,S,M3,DGM-10573,smoking status: smoker
+347,GSM2890944,small airway epithelium brushing,15.9119,S,M6,DGM-10573,smoking status: smoker
+348,GSM2890945,small airway epithelium brushing,11.138,S,M12,DGM-10595,smoking status: smoker
+349,GSM2890946,small airway epithelium brushing,10.4932,S,M3,DGM-10595,smoking status: smoker
+350,GSM2890947,small airway epithelium brushing,9.52,S,M6,DGM-10595,smoking status: smoker
+351,GSM2890948,small airway epithelium brushing,8.39611,S,M12,DGM-10625,smoking status: smoker
+352,GSM2890949,small airway epithelium brushing,9.84708,S,M3,DGM-10625,smoking status: smoker
+353,GSM2890950,small airway epithelium brushing,14.5537,S,M6,DGM-10625,smoking status: smoker
+354,GSM2890951,small airway epithelium brushing,9.625,S,M12,DGM-10661,smoking status: smoker
+355,GSM2890952,small airway epithelium brushing,11.7022,S,M3,DGM-10661,smoking status: smoker
+356,GSM2890953,small airway epithelium brushing,7.70683,S,M6,DGM-10661,smoking status: smoker
+357,GSM2890954,small airway epithelium brushing,12.7112,S,M12,DGM-10698,smoking status: smoker
+358,GSM2890955,small airway epithelium brushing,7.06389,S,M12,DGM-10704,smoking status: smoker
+359,GSM2890956,small airway epithelium brushing,8.13771,S,M3,DGM-10704,smoking status: smoker
+360,GSM2890957,small airway epithelium brushing,14.5437,S,M12,DGM-10731,smoking status: smoker
+361,GSM2890958,small airway epithelium brushing,7.73089,S,M3,DGM-10731,smoking status: smoker
+362,GSM2890959,small airway epithelium brushing,15.8478,S,M6,DGM-10731,smoking status: smoker
+363,GSM2890960,small airway epithelium brushing,8.09611,S,M12,DGM-10732,smoking status: smoker
+364,GSM2890961,small airway epithelium brushing,7.8404,S,M3,DGM-10732,smoking status: smoker
+365,GSM2890962,small airway epithelium brushing,18.0293,S,M6,DGM-10732,smoking status: smoker
+366,GSM2890963,small airway epithelium brushing,9.82208,S,M3,DGM-10757,smoking status: smoker
+367,GSM2890964,small airway epithelium brushing,14.3826,S,M6,DGM-10757,smoking status: smoker
+368,GSM2890965,small airway epithelium brushing,9.94044,S,M12,DGM-10768,smoking status: smoker
+369,GSM2890966,small airway epithelium brushing,11.8869,S,M3,DGM-10768,smoking status: smoker
+370,GSM2890967,small airway epithelium brushing,10.213,S,M6,DGM-10768,smoking status: smoker
+371,GSM2890968,small airway epithelium brushing,10.8267,S,M12,DGM-10808,smoking status: smoker
+372,GSM2890969,small airway epithelium brushing,13.6415,S,M12,DGM-10844,smoking status: smoker
+373,GSM2890970,small airway epithelium brushing,9.50197,S,M3,DGM-10844,smoking status: smoker
+374,GSM2890971,small airway epithelium brushing,15.1326,S,M6,DGM-10844,smoking status: smoker
+375,GSM2890972,small airway epithelium brushing,8.22222,S,M12,DGM-10851,smoking status: smoker
+376,GSM2890973,small airway epithelium brushing,7.80533,S,M3,DGM-10851,smoking status: smoker
+377,GSM2890974,small airway epithelium brushing,16.6537,S,M6,DGM-10851,smoking status: smoker
+378,GSM2890975,small airway epithelium brushing,14.9491,S,M12,DGM-10869,smoking status: smoker
+379,GSM2890976,small airway epithelium brushing,7.6424,S,M3,DGM-10869,smoking status: smoker
+380,GSM2890977,small airway epithelium brushing,16.6397,S,M6,DGM-10869,smoking status: smoker
+381,GSM2890978,small airway epithelium brushing,9.67073,S,M3,DGM-10880,smoking status: smoker
+382,GSM2890979,small airway epithelium brushing,16.3046,S,M6,DGM-10880,smoking status: smoker
+383,GSM2890980,small airway epithelium brushing,14.9778,S,M12,DGM-10901,smoking status: smoker
+384,GSM2890981,small airway epithelium brushing,7.6486,S,M3,DGM-10901,smoking status: smoker
+385,GSM2890982,small airway epithelium brushing,16.0849,S,M6,DGM-10901,smoking status: smoker
+386,GSM2890983,small airway epithelium brushing,12.9293,S,M12,DGM-10906,smoking status: smoker
+387,GSM2890984,small airway epithelium brushing,7.68651,S,M3,DGM-10906,smoking status: smoker
+388,GSM2890985,small airway epithelium brushing,12.9627,S,M6,DGM-10906,smoking status: smoker
+389,GSM2890986,small airway epithelium brushing,9.823,S,M6,DGM-10907,smoking status: smoker
+390,GSM2890987,small airway epithelium brushing,15.8478,S,M3,DGM-10922,smoking status: smoker
+391,GSM2890988,small airway epithelium brushing,9.22056,S,M6,DGM-10922,smoking status: smoker
+392,GSM2890989,small airway epithelium brushing,8.31083,S,M12,DGM-10986,smoking status: smoker
+393,GSM2890990,small airway epithelium brushing,16.4406,S,M3,DGM-10986,smoking status: smoker
+394,GSM2890991,small airway epithelium brushing,7.96272,S,M6,DGM-10986,smoking status: smoker
+395,GSM2890992,small airway epithelium brushing,7.10972,S,M12,DGM-11016,smoking status: smoker
+396,GSM2890993,small airway epithelium brushing,16.6277,S,M3,DGM-11016,smoking status: smoker
+397,GSM2890994,small airway epithelium brushing,9.625,S,M6,DGM-11016,smoking status: smoker
+398,GSM2890995,small airway epithelium brushing,7.41278,S,M12,DGM-11038,smoking status: smoker
+399,GSM2890996,small airway epithelium brushing,14.5924,S,M3,DGM-11038,smoking status: smoker
+400,GSM2890997,small airway epithelium brushing,10.9413,S,M6,DGM-11038,smoking status: smoker
+401,GSM2890998,small airway epithelium brushing,7.13139,S,M12,DGM-11066,smoking status: smoker
+402,GSM2890999,small airway epithelium brushing,9.87486,S,M3,DGM-11066,smoking status: smoker
+403,GSM2891000,small airway epithelium brushing,14.5537,S,M6,DGM-11066,smoking status: smoker
+404,GSM2891001,small airway epithelium brushing,7.96972,S,M12,DGM-11111,smoking status: smoker
+405,GSM2891002,small airway epithelium brushing,10.2678,S,M6,DGM-11111,smoking status: smoker
