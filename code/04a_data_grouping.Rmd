@@ -30,7 +30,7 @@ keep_dat %>% group_by(type) %>% count()
 
 ```{r}
 treated_cells <- keep_dat %>% filter(type=="treated cells") 
-treated_cells %>% group_by(treatment) %>% count()
+treated_cells %>% group_by(treatment) %>% count() %>% arrange(desc(n))
 ```
 
 
@@ -46,12 +46,16 @@ tissue_data %>% group_by(tissue2) %>% count()
 Add in sample-level sex annotations
 ```{r}
 # setup for this - put it in a google sheet
-human_sl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_all_sl.csv")
-human_rnaseq_sl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_rnaseq_sl.csv")
+human_sl <- read_csv("../../drug_trt/data/02_labeled_data/human_all_sl.csv")
+human_rnaseq_sl <- read_csv("../../drug_trt/data/02_labeled_data/human_rnaseq_sl.csv")
 
 # what did the text labels say
-human_metadata <- read.csv("../../../../drug_trt/data/01_metadata/human_microarray_metadata_sex.csv")
-human_rnaseq <- read.csv("../../../../drug_trt/data/01_metadata/human_rnaseq_metadata_sex.csv")
+human_metadata <- read.csv("../../drug_trt/data/01_metadata/human_microarray_metadata_sex.csv")
+human_rnaseq <- read.csv("../../drug_trt/data/01_metadata/human_rnaseq_metadata_sex.csv")
+
+rb_sex <-read_csv("../data/sex_labels_w_rb.csv")
+human_sl %>% anti_join(rb_sex, by=c("id"="gsm")) %>% nrow()
+
 
 # what did our old labels say
 sl_lab <- human_sl %>% 
@@ -65,8 +69,8 @@ sl_lab <- human_sl %>%
   unique()
 
 
-rnaseq_exp_to_sample <- read_csv("../../../../drug_trt/data/01_metadata/human_exp_to_sample_counts.csv") 
-exp_to_sample <- read_csv("../../../../drug_trt/data/01_metadata/human_exp_to_sample.csv") 
+rnaseq_exp_to_sample <- read_csv("../../drug_trt/data/01_metadata/human_exp_to_sample_counts.csv") 
+exp_to_sample <- read_csv("../../drug_trt/data/01_metadata/human_exp_to_sample.csv") 
 
 rnaseq_exp_to_sample2 <- rnaseq_exp_to_sample %>% 
   filter(present & num_reads >= 100000)
@@ -79,9 +83,26 @@ exp_to_sample_smok <- exp_to_sample %>%
 exp_to_samp_w_sl <- exp_to_sample_smok %>% 
   left_join(sl_lab, by=c("sample_acc"="acc")) %>%
   unique() 
+
+# get the study mapping
+new_rb <- rb_sex %>% filter(!is.na(consensus_sex)) %>% anti_join(exp_to_samp_w_sl %>% filter(!is.na(expr_sex)), by=c("gsm"="sample_acc")) 
+
+
+con <- dbConnect(SQLite(), "../../labeling/GEOmetadb.sqlite")
+dbListTables(con)
+gse_gsm <- dbGetQuery(con, 
+sprintf("SELECT gse, gsm FROM gse_gsm WHERE gsm IN (\'%s\')",
+        paste(new_rb$gsm, collapse="\','")))
+gse_gsm %>% head()
+dbDisconnect(con)
+new_rb2 <- new_rb %>% left_join(gse_gsm)
+exp_to_samp_w_sl2 <- exp_to_samp_w_sl %>% filter(!is.na(expr_sex)) %>% anti_join(new_rb, by=c("sample_acc"="gsm")) %>% bind_rows(new_rb2 %>% rename("study_acc"="gse", "sample_acc"="gsm") %>% select(colnames(exp_to_samp_w_sl)))
+exp_to_samp_w_sl2 %>% head()
+# get the study to sample mapping
+
 # NOTE: we're missing a lot of labels
 
-table(is.na(exp_to_samp_w_sl$pred))
+table(is.na(exp_to_samp_w_sl2$pred))
 # FALSE  TRUE 
 # 7285  1870 
 # possible they aren't in the actual metadata anyhow? I am confused
@@ -92,15 +113,15 @@ googledrive::drive_mv(ss, path="CERSI_project/data/")
 ```
 Add in cell line annotations 
 ```{r}
-sample_cl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_compendia_sample_cl.csv")
-rnaseq_cl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_rnaseq_sample_cl.csv")
+sample_cl <- read_csv("../../drug_trt/data/02_labeled_data/human_compendia_sample_cl.csv")
+rnaseq_cl <- read_csv("../../drug_trt/data/02_labeled_data/human_rnaseq_sample_cl.csv")
 
-sample_cl2 <- read_csv("../../../../drug_trt/data/02_labeled_data/human_compendia_sample_cl_part2.csv")
-rnaseq_cl2 <- read_csv("../../../../drug_trt/data/02_labeled_data/human_rnaseq_sample_cl_part2.csv")
+sample_cl2 <- read_csv("../../drug_trt/data/02_labeled_data/human_compendia_sample_cl_part2.csv")
+rnaseq_cl2 <- read_csv("../../drug_trt/data/02_labeled_data/human_rnaseq_sample_cl_part2.csv")
 
 # study-level?
-study_cl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_compendia_study_cl.csv")
-study_rnaseq_cl <- read_csv("../../../../drug_trt/data/02_labeled_data/human_rnaseq_study_cl.csv")
+study_cl <- read_csv("../../drug_trt/data/02_labeled_data/human_compendia_study_cl.csv")
+study_rnaseq_cl <- read_csv("../../drug_trt/data/02_labeled_data/human_rnaseq_study_cl.csv")
 
 cl_df <- sample_cl %>% 
   bind_rows(rnaseq_cl) %>% 
@@ -118,12 +139,12 @@ cl_df <- sample_cl %>%
   ))
 
 cl_df2 <- exp_to_sample_smok %>% 
-  left_join(cl_df2 %>% 
+  left_join(cl_df %>% 
               select(gsm, accession), by=c("sample_acc"="gsm"))
 
 # look at the cell metadata
-cell_metadata1 <- read.csv("../../../../drug_trt/data/01_metadata/human_metadata.csv")
-cell_metadata2 <- read.csv("../../../../drug_trt/data/01_metadata/human_rnaseq_sample_metadata.csv")
+cell_metadata1 <- read.csv("../../drug_trt/data/01_metadata/human_metadata.csv")
+cell_metadata2 <- read.csv("../../drug_trt/data/01_metadata/human_rnaseq_sample_metadata.csv")
 
 cl_text <- cell_metadata1 %>% 
   select(acc, cl_line) %>%
@@ -131,7 +152,7 @@ cl_text <- cell_metadata1 %>%
 
 
 # add a common name for the cell line?
-cell_dat <- read.csv("../../../../drug_trt/data/00_db_data/cellosaurus_df_v2.txt")
+cell_dat <- read.csv("../../drug_trt/data/00_db_data/cellosaurus_df_v2.txt")
 cell_name <- cell_dat %>% select(accession, cl) %>%
   mutate(cl=as.character(cl)) %>%
   separate_rows(accession, sep="\\|") %>%
@@ -172,9 +193,11 @@ googledrive::drive_mv(sc, path="CERSI_project/data/")
 
 Summarize to study-level for sex labels
 ```{r}
-sex_lab <- exp_to_samp_w_sl %>% select(study_acc, sample_acc, expr_sex, text_sex) %>%
+sex_lab <- exp_to_samp_w_sl2 %>% filter(!is.na(expr_sex)) %>% select(study_acc, sample_acc, expr_sex, text_sex) %>%
   pivot_longer(cols=c("expr_sex", "text_sex"), names_to="labeling_source",
                values_to="sex")
+
+exp_sl <- sex_lab %>%  filter(labeling_source=="expr_sex")
 
 sex_lab2 <- sex_lab %>% 
   mutate(sex=ifelse(is.na(sex), "NA", sex)) %>%
@@ -205,6 +228,23 @@ sl_study <- sex_lab2 %>%
   filter(labeling_source=="expr_sex") %>% 
   ungroup() %>%
   select(-labeling_source) 
+
+# separate this out
+sl_study2 <- sl_study %>% inner_join(manual_annot %>% filter(keep=="yes") %>% select(gse, type), by=c("study_acc"="gse")) %>% mutate(study_sex=factor(study_sex, levels=c("female-only", "mostly-female", "mixed", "mostly-male", "male-only", "unknown"))) 
+
+exp_sl_type <- exp_sl %>% inner_join(manual_annot %>% filter(keep=="yes") %>% select(gse, type), by=c("study_acc"="gse")) 
+
+sl_study2 %>% filter(study_sex=="unknown")
+
+table(sl_study2[,c("study_sex", "type")])
+
+ggplot(sl_study2 %>% filter(study_sex!="unknown"), aes(x=type))+geom_bar(aes(col=study_sex, fill=study_sex))+ylab("number of studies") +xlab("")
+
+ggplot(exp_sl_type, aes(x=type))+geom_bar(aes(col=sex, fill=sex))+ylab("number of samples")+xlab("")
+
+# plot sex breakdown - sample, study
+
+sl_study2 %>% head()
 
 sl <- sheets_create(name="study_sex_lab", sheets=sl_study)
 googledrive::drive_mv(sl, path="CERSI_project/data/")

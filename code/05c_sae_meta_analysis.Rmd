@@ -1,0 +1,400 @@
+---
+title: "05d_sae_meta_analysis.Rmd"
+author: "E Flynn"
+date: "7/15/2020"
+output: html_document
+---
+
+```{r}
+require('tidyverse')
+require('MetaIntegrator')
+require('ggrepel')
+
+```
+
+Read in the pheno data
+
+Download all of these!
+```{r}
+require("MetaIntegrator")
+gses2 <- getGEOData(gse.list)
+sapply(gses2$originalData, function(x) x$exp_comment)
+# GSE108134 is missing
+# do meta-analysis w/ these
+sapply(gses2$originalData, function(x) dim(x$expr))
+
+exp_mat <- do.call(cbind, lapply(gses2$originalData, function(x) x$expr))
+dim(exp_mat) # only 1406 columns
+save(exp_mat, file="sae_exp_mat.RData")
+load("sae_exp_mat.RData")
+# //TODO: what happens with repeated data?
+
+
+# 1. deal w/ missing data
+missing_counts <- apply(exp_mat, 2, function(x) sum(is.na(x)))
+
+# ok - well this makes things easy - just exclude missing 
+#table(missing_counts)
+#missing_counts
+#    0 54675 
+# 1252   154 
+
+exp_mat2 <- exp_mat[,missing_counts==0]
+
+# remove duplicates
+unique_cols <- unique(unlist(colnames(exp_mat2)))
+exp_mat3 <- exp_mat2[,!duplicated(colnames(exp_mat2))]
+dim(exp_mat3) # 460 columns
+
+# there are duplicates still... BOOO
+exp_mat4 <- exp_mat3[,!duplicated(t(exp_mat3))] # --> 406
+save(exp_mat4, file="sae_exp_mat2.RData")
+```
+
+```{r}
+# 2. visualize the data: MDS, PCA, UMAP/tSNE
+require('Rtsne')
+
+tsne_out <- Rtsne(t(as.matrix(exp_mat5)))
+tsne_out2 <- cbind(data.frame(tsne_out$Y), "geo_accession"=colnames(exp_mat5)) %>%
+  left_join(pheno_mat3) 
+
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=smok), alpha=0.7)+
+  theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) # Plot the result
+ggplot(tsne_out2 %>% mutate(expr_sex=factor(expr_sex, levels=c("female", "unknown", "male"))), aes(x=X1, y=X2))+
+  geom_point(aes(col=expr_sex, shape=smok), alpha=0.7)+
+  theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=first_study))
+ggplot(tsne_out2 %>% mutate(year_bin=factor(year_bin)), aes(x=X1, y=X2))+
+  geom_point(aes(col=year_bin), alpha=0.7)+
+  theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=submission_date), alpha=0.7)+
+  theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+# // TODO: play with parameters for tsne
+
+
+# PCA
+save(exp_mat5, pheno_mat, file="tmp_sae_dat.RData")
+
+require('ggfortify')
+pcs <- prcomp(t(as.matrix(exp_mat5)), scale. = TRUE)
+autoplot(pcs)
+
+autoplot(pcs, data=pheno_mat, colour='smok')
+autoplot(pcs, data=pheno_mat %>% mutate(expr_sex=factor(expr_sex, levels=c("female", "unknown", "male"))), colour='expr_sex', shape='smok', alpha=0.7)
+autoplot(pcs, data=pheno_mat3 %>% mutate(year_bin=factor(year_bin)), colour='year_bin', alpha=0.5)
+autoplot(pcs, data=pheno_mat, colour='submission_date')
+
+# CLUSTERING
+dmat <- dist(t(exp_mat5))
+hc <- hclust(dmat)
+plot(hc)
+```
+
+
+
+Setup for meta-analysis
+```{r}
+mapped_dat <- pheno_mat3 %>%
+  mutate(year_bin=factor(paste("y",year_bin, sep=""))) %>% 
+  select(geo_accession, year_bin) %>%
+  arrange(year_bin, geo_accession)
+
+exp2008 <-exp_mat5[,(mapped_dat %>% filter(year_bin=="y2008"))$geo_accession]
+exp2009 <-exp_mat5[,(mapped_dat %>% filter(year_bin=="y2009"))$geo_accession]
+exp2014 <-exp_mat5[,(mapped_dat %>% filter(year_bin=="y2014"))$geo_accession]
+
+p2008 <- pheno_mat3 %>% filter(year_bin==2008) %>% arrange(geo_accession)
+p2009 <- pheno_mat3 %>% filter(year_bin==2009) %>% arrange(geo_accession)
+p2014 <- pheno_mat3 %>% filter(year_bin==2014) %>% arrange(geo_accession)
+
+gse_ex <- getGEOData("GSE11784")
+gse_ex2 <- gse_ex$originalData$GSE11784
+
+gse2008 = gse_ex2
+gse2008$pheno <- data.frame(p2008)
+rownames(gse2008$pheno) <- p2008$geo_accession
+gse2008$expr <- exp2008
+
+gse2009 = gse_ex2
+gse2009$pheno <- data.frame(p2009)
+rownames(gse2009$pheno) <- p2009$geo_accession
+gse2009$expr <- exp2009
+
+gse2014 = gse_ex2
+gse2014$pheno <- data.frame(p2014)
+rownames(gse2014$pheno) <- p2014$geo_accession
+
+gse2014$expr <- exp2014
+
+# add class labels
+gse2008$class <- ifelse(gse2008$pheno$smok=="S", 1, 0)
+names(gse2008$class) <- gse2008$pheno$geo_accession
+
+gse2009$class <- ifelse(gse2009$pheno$smok=="S", 1, 0)
+names(gse2009$class) <- gse2009$pheno$geo_accession
+
+gse2014$class <- ifelse(gse2014$pheno$smok=="S", 1, 0)
+names(gse2014$class) <- gse2014$pheno$geo_accession
+
+checkDataObject(gse2008, "Dataset")
+checkDataObject(gse2009, "Dataset")
+checkDataObject(gse2014, "Dataset")
+metaObj <- list("originalData"=list("y2008"=gse2008, "y2009"=gse2009, "y2014"=gse2014))
+
+metaObj <- runMetaAnalysis(metaObj)
+metaObj <- filterGenes(metaObj)
+summarizeFilterResults(metaObj, getMostRecentFilter(metaObj))
+
+violinPlot(metaObj$filterResults$FDR0.05_es0_nStudies1_looaTRUE_hetero0, gse2008, labelColumn = 'smok')
+
+violinPlot(metaObj$filterResults$FDR0.05_es0_nStudies1_looaTRUE_hetero0, gse2009, labelColumn = 'smok')
+```
+
+
+Separate by sex
+```{r}
+
+p2008_f <- pheno_mat3 %>% filter(year_bin==2008  & expr_sex=="female") %>% arrange(geo_accession)
+p2009_f <- pheno_mat3 %>% filter(year_bin==2009  & expr_sex=="female") %>% arrange(geo_accession)
+p2014_f <- pheno_mat3 %>% filter(year_bin==2014  & expr_sex=="female") %>% arrange(geo_accession)
+
+exp2008_f <-exp_mat5[,p2008_f$geo_accession]
+exp2009_f <-exp_mat5[,p2009_f$geo_accession]
+exp2014_f <-exp_mat5[,p2014_f$geo_accession]
+
+p2008_m <- pheno_mat3 %>% filter(year_bin==2008  & expr_sex=="male") %>% arrange(geo_accession)
+p2009_m <- pheno_mat3 %>% filter(year_bin==2009  & expr_sex=="male") %>% arrange(geo_accession)
+p2014_m <- pheno_mat3 %>% filter(year_bin==2014  & expr_sex=="male") %>% arrange(geo_accession)
+
+exp2008_m <-exp_mat5[,p2008_m$geo_accession]
+exp2009_m <-exp_mat5[,p2009_m$geo_accession]
+exp2014_m <-exp_mat5[,p2014_m$geo_accession]
+
+gse2008_f = gse_ex2
+gse2008_f$pheno <- data.frame(p2008_f)
+rownames(gse2008_f$pheno) <- p2008_f$geo_accession
+gse2008_f$expr <- exp2008_f
+
+gse2008_m = gse_ex2
+gse2008_m$pheno <- data.frame(p2008_m)
+rownames(gse2008_m$pheno) <- p2008_m$geo_accession
+gse2008_m$expr <- exp2008_m
+
+gse2009_f = gse_ex2
+gse2009_f$pheno <- data.frame(p2009_f)
+rownames(gse2009_f$pheno) <- p2009_f$geo_accession
+gse2009_f$expr <- exp2009_f
+
+gse2009_m = gse_ex2
+gse2009_m$pheno <- data.frame(p2009_m)
+rownames(gse2009_m$pheno) <- p2009_m$geo_accession
+gse2009_m$expr <- exp2009_m
+
+gse2014_f = gse_ex2
+gse2014_f$pheno <- data.frame(p2014_f)
+rownames(gse2014_f$pheno) <- p2014_f$geo_accession
+gse2014_f$expr <- exp2014_f
+
+
+
+gse2014_m = gse_ex2
+gse2014_m$pheno <- data.frame(p2014_m)
+rownames(gse2014_m$pheno) <- p2014_m$geo_accession
+gse2014_m$expr <- exp2014_m
+gse2014_m$formattedName <- "y2014"
+gse2014_f$formattedName <- "y2014"
+
+# add class labels
+gse2008_f$class <- ifelse(gse2008_f$pheno$smok=="S", 1, 0)
+names(gse2008_f$class) <- gse2008_f$pheno$geo_accession
+gse2009_f$class <- ifelse(gse2009_f$pheno$smok=="S", 1, 0)
+names(gse2009_f$class) <- gse2009_f$pheno$geo_accession
+gse2014_f$class <- ifelse(gse2014_f$pheno$smok=="S", 1, 0)
+names(gse2014_f$class) <- gse2014_f$pheno$geo_accession
+
+gse2008_m$class <- ifelse(gse2008_m$pheno$smok=="S", 1, 0)
+names(gse2008_m$class) <- gse2008_m$pheno$geo_accession
+gse2009_m$class <- ifelse(gse2009_m$pheno$smok=="S", 1, 0)
+names(gse2009_m$class) <- gse2009_m$pheno$geo_accession
+gse2014_m$class <- ifelse(gse2014_m$pheno$smok=="S", 1, 0)
+names(gse2014_m$class) <- gse2014_m$pheno$geo_accession
+
+
+metaObj_f <- list("originalData"=list("y2008"=gse2008_f, "y2009"=gse2009_f, "y2014"=gse2014_f))
+metaObj_m <- list("originalData"=list("y2008"=gse2008_m, "y2009"=gse2009_m, "y2014"=gse2014_m))
+checkDataObject(metaObj_f, "Meta", "Pre-Analysis")
+checkDataObject(metaObj_m, "Meta", "Pre-Analysis")
+
+metaObj_f <- runMetaAnalysis(metaObj_f)
+metaObj_f <- filterGenes(metaObj_f, effectSizeThresh = 0.5)
+res_f <- summarizeFilterResults(metaObj_f, getMostRecentFilter(metaObj_f))
+
+metaObj_m <- runMetaAnalysis(metaObj_m)
+metaObj_m <- filterGenes(metaObj_m, effectSizeThresh = 0.5)
+res_m <- summarizeFilterResults(metaObj_m, getMostRecentFilter(metaObj_m))
+
+
+metaObj_f$originalData$y2008$formattedName <- "y2008"
+metaObj_f$originalData$y2009$formattedName <- "y2009"
+metaObj_f$originalData$y2014$formattedName <- "y2014"
+metaObj_m$originalData$y2008$formattedName <- "y2008"
+metaObj_m$originalData$y2009$formattedName <- "y2009"
+metaObj_m$originalData$y2014$formattedName <- "y2014"
+```
+
+
+Examine meta-analysis results
+```{r}
+violinPlot(metaObj_f$filterResults$FDR0.05_es0.5_nStudies1_looaTRUE_hetero0, gse2014_f, labelColumn = 'smok')
+
+violinPlot(metaObj_m$filterResults$FDR0.05_es0.5_nStudies1_looaTRUE_hetero0, gse2014_m, labelColumn = 'smok')
+
+length(rownames(res_f$pos)) # 62
+length(rownames(res_m$pos)) # 134
+length(rownames(res_f$neg)) # 130
+length(rownames(res_m$neg)) # 134
+length(intersect(rownames(res_f$neg), rownames(res_m$neg))) # 25
+length(intersect(rownames(res_f$pos), rownames(res_m$pos))) # 20
+
+# none are flipped
+intersect(rownames(res_f$pos), rownames(res_m$neg))
+intersect(rownames(res_m$pos), rownames(res_f$neg))
+
+setdiff(rownames(res_f$pos), rownames(res_m$pos))
+setdiff(rownames(res_m$pos), rownames(res_f$pos))
+
+all_sig <- unique(c(rownames(res_m$pos), rownames(res_f$pos), rownames(res_f$neg), rownames(res_m$neg)))
+all_res_f <- metaObj_f$metaAnalysis$pooledResults
+all_res_f$gene <- rownames(all_res_f)
+all_res_m <- metaObj_m$metaAnalysis$pooledResults
+all_res_m$gene <- rownames(all_res_m)
+
+comb_res <- all_res_f %>% select(gene, effectSize, effectSizeStandardError, effectSizePval) %>% left_join(all_res_m %>% select(gene, effectSize, effectSizeStandardError, effectSizePval), by="gene")
+ggplot(comb_res, aes(x=effectSize.x, y=effectSize.y))+geom_point(alpha=0.2)+geom_smooth()
+
+ggplot(comb_res %>% filter(gene %in% all_sig), aes(x=effectSize.x, y=effectSize.y))+geom_point( alpha=0.2)+geom_errorbar(aes(ymin=effectSize.y-effectSizeStandardError.y, ymax=effectSize.y+effectSizeStandardError.y), alpha=0.3)+
+  geom_errorbarh(aes(xmin=effectSize.x-effectSizeStandardError.x, xmax=effectSize.x+effectSizeStandardError.x), alpha=0.3)
+
+all_res_f2 <- all_res_f %>%  select(gene, effectSize, effectSizeStandardError, effectSizePval) %>%  mutate(l_es=effectSize-1.96*effectSizeStandardError, u_es=effectSize+1.96*effectSizeStandardError)
+
+all_res_m2 <- all_res_m%>%  select(gene, effectSize, effectSizeStandardError, effectSizePval) %>% mutate(l_es=effectSize-1.96*effectSizeStandardError, u_es=effectSize+1.96*effectSizeStandardError)
+
+res3 <- all_res_f2 %>% inner_join(all_res_m2, by=c("gene"))
+
+diff_es <- res3 %>% filter(gene %in% all_sig) %>% filter(l_es.y > u_es.x | l_es.x > u_es.y)
+ggplot(diff_es, aes(x=effectSize.x, y=effectSize.y))+
+    geom_hline(yintercept = 0, linetype=2)+
+    geom_vline(xintercept = 0, linetype=2)+
+        geom_hline(yintercept = 0.5, linetype=3, col="red")+
+    geom_vline(xintercept = 0.5, linetype=3, col="red")+
+        geom_hline(yintercept = -0.5, linetype=3, col="red")+
+    geom_vline(xintercept = -0.5, linetype=3, col="red")+
+  geom_point(alpha=0.7, color="blue")+
+  geom_errorbar(aes(ymin=l_es.y, ymax=u_es.y), alpha=0.2)+
+  geom_errorbarh(aes(xmin=l_es.x, xmax=u_es.x),alpha=0.2)+
+  geom_label_repel(aes(label=gene), size=3)+
+  ylim(-2, 2)+
+  xlim(-2, 2)+
+  ylab("effect size (S-NS) - males")+
+  xlab("effect size (S-NS) - females")+
+  theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+
+ggplot(res3 %>% filter(gene %in% all_sig), aes(x=effectSize.x, y=effectSize.y))+
+    geom_hline(yintercept = 0, linetype=2)+
+    geom_vline(xintercept = 0, linetype=2)+
+      geom_hline(yintercept = 0.5, linetype=3, col="red")+
+    geom_vline(xintercept = 0.5, linetype=3, col="red")+
+        geom_hline(yintercept = -0.5, linetype=3, col="red")+
+    geom_vline(xintercept = -0.5, linetype=3, col="red")+
+    geom_abline(intercept=0, slope=1)+
+  geom_point(alpha=0.7)+
+  geom_errorbar(aes(ymin=l_es.y, ymax=u_es.y), alpha=0.2)+
+  geom_errorbarh(aes(xmin=l_es.x, xmax=u_es.x),alpha=0.2)+
+  ylim(-2, 2)+
+  xlim(-2, 2)+
+  ylab("effect size (S-NS) - males")+
+  xlab("effect size (S-NS) - females")+
+  theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+
+
+diff_es2 <- diff_es %>% arrange(desc(abs(effectSize.x-effectSize.y))) 
+```
+
+Try making forest plots using built in + own function
+```{r}
+plot.new()
+forestPlot(metaObj_m, "BTNL8" )
+plot.new()
+forestPlot(metaObj_f, "BTNL8" )
+
+plot.new()
+forestPlot(metaObj_m, "CYP2A6" )
+plot.new()
+forestPlot(metaObj_f, "CYP2A6" )
+
+altForestPlot <- function(metaObj_f, metaObj_m, gene_name){
+  
+  # --- get pooled estimates --- #
+  all_res_f <- metaObj_f$metaAnalysis$pooledResults
+  all_res_m <- metaObj_m$metaAnalysis$pooledResults
+
+  pooled_df <- bind_rows(all_res_f[gene_name, c("effectSize", "effectSizeStandardError")],
+          all_res_m[gene_name, c("effectSize", "effectSizeStandardError")])
+
+  colnames(pooled_df) <- c("es", "se")
+  pooled_df$sex <- c("female", "male")
+  pooled_df$ds <- "summary"
+  
+  # --- get individual ds estimates --- #
+  es_f <- metaObj_f$metaAnalysis$datasetEffectSizes[gene_name,]
+  se_f <- metaObj_f$metaAnalysis$datasetEffectSizeStandardErrors[gene_name,]
+  es_m <- metaObj_m$metaAnalysis$datasetEffectSizes[gene_name,]
+  se_m <- metaObj_m$metaAnalysis$datasetEffectSizeStandardErrors[gene_name,]
+  
+  df_f <- data.frame(cbind("es"=es_f, "se"=se_f) )
+  df_f$ds <- rownames(df_f)
+  df_f$sex <- "female"
+  df_m <- data.frame(cbind("es"=es_m, "se"=se_m) )
+  df_m$ds <- rownames(df_m)
+  df_m$sex <- "male"
+  
+  # --- put it all together in a data frame --- #
+  df2 <- df_f %>% 
+    bind_rows(df_m) %>% 
+    bind_rows(pooled_df) %>% 
+    mutate(ds=factor(ds, levels=c("y2008", "y2009", "y2014", "summary"))) 
+
+  # --- plot! --- #
+  ggplot(df2, aes(y=sex, x=es, col=sex))+
+  geom_vline(xintercept=0, linetype=2)+
+  geom_errorbarh(aes(xmin=es-1.96*se, xmax=es+1.96*se), height=0.1)+theme_bw() +
+    facet_grid(ds ~., switch="y") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.y.left = element_text(angle = 0),
+    axis.line = element_line(colour = "black"))+
+  ggtitle(gene_name)+
+  ylab("")+
+  xlab("effect size (S-NS)")
+}
+
+altForestPlot("ZNF658")
+```
+
+

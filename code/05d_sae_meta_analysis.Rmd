@@ -1,0 +1,239 @@
+---
+title: "05d_sae_meta_analysis.Rmd"
+author: "E Flynn"
+date: "7/15/2020"
+output: html_document
+---
+
+```{r}
+require('tidyverse')
+require('MetaIntegrator')
+require('ggrepel')
+```
+
+
+Load the expression and the pheno data
+```{r}
+load("data/sae_exp_mat_phe.RData") #exp_mat5, pheno_mat
+```
+
+
+Grab an example study for scaffolding
+```{r}
+gse_ex <- getGEOData("GSE11784")
+gse_ex2 <- gse_ex$originalData$GSE11784
+
+```
+
+
+```{r}
+grab_sae_data <- function(expr_mat, pheno_mat, year, sex){
+  my_pmat <- pheno_mat %>% 
+    mutate(year_bin=as.character(year_bin)) %>%
+    filter(year_bin==year & expr_sex==sex) %>% 
+    arrange(geo_accession)
+  list_samples <- my_pmat$geo_accession 
+  my_emat <- expr_mat[,list_samples]
+
+  my_gse = gse_ex2
+  my_gse$pheno <- data.frame(my_pmat)
+  rownames(my_gse$pheno) <- list_samples
+  my_gse$expr <- my_emat
+  my_gse$formattedName <- paste("y", year, sep="")
+  my_gse$class <- ifelse(my_gse$pheno$smok=="S", 1, 0)
+  names(my_gse$class) <- list_samples
+  
+  return(my_gse)
+}
+```
+
+Set up the meta-analysis objects
+```{r}
+gse2008_f <- grab_sae_data(exp_mat5, pheno_mat, "2008", "female")
+gse2009_f <- grab_sae_data(exp_mat5, pheno_mat, "2009", "female")
+gse2014_f <- grab_sae_data(exp_mat5, pheno_mat, "2014", "female")
+gse2008_m <- grab_sae_data(exp_mat5, pheno_mat, "2008", "male")
+gse2009_m <- grab_sae_data(exp_mat5, pheno_mat, "2009", "male")
+gse2014_m <- grab_sae_data(exp_mat5, pheno_mat, "2014", "male")
+
+metaObj_f <- list("originalData"=list("y2008"=gse2008_f, "y2009"=gse2009_f, "y2014"=gse2014_f))
+metaObj_m <- list("originalData"=list("y2008"=gse2008_m, "y2009"=gse2009_m, "y2014"=gse2014_m))
+checkDataObject(metaObj_f, "Meta", "Pre-Analysis")
+checkDataObject(metaObj_m, "Meta", "Pre-Analysis")
+```
+
+Run meta-analysis
+```{r}
+metaObj_f <- runMetaAnalysis(metaObj_f)
+metaObj_f <- filterGenes(metaObj_f, effectSizeThresh = 0.5)
+res_f <- summarizeFilterResults(metaObj_f, getMostRecentFilter(metaObj_f))
+
+metaObj_m <- runMetaAnalysis(metaObj_m)
+metaObj_m <- filterGenes(metaObj_m, effectSizeThresh = 0.5)
+res_m <- summarizeFilterResults(metaObj_m, getMostRecentFilter(metaObj_m))
+```
+
+
+Examine meta-analysis results
+```{r}
+violinPlot(metaObj_f$filterResults$FDR0.05_es0.5_nStudies1_looaTRUE_hetero0, gse2014_f, labelColumn = 'smok')
+
+violinPlot(metaObj_m$filterResults$FDR0.05_es0.5_nStudies1_looaTRUE_hetero0, gse2014_m, labelColumn = 'smok')
+
+
+# get all the lists of genes 
+length(rownames(res_f$pos)) # 62
+length(rownames(res_m$pos)) # 134
+length(rownames(res_f$neg)) # 130
+length(rownames(res_m$neg)) # 134
+length(intersect(rownames(res_f$neg), rownames(res_m$neg))) # 25
+length(intersect(rownames(res_f$pos), rownames(res_m$pos))) # 20
+
+# none are flipped
+intersect(rownames(res_f$pos), rownames(res_m$neg))
+intersect(rownames(res_m$pos), rownames(res_f$neg))
+
+setdiff(rownames(res_f$pos), rownames(res_m$pos))
+setdiff(rownames(res_m$pos), rownames(res_f$pos))
+```
+
+Put all the sig results together and visualize
+```{r}
+all_sig <- unique(c(rownames(res_m$pos), rownames(res_f$pos), rownames(res_f$neg), rownames(res_m$neg)))
+all_res_f <- metaObj_f$metaAnalysis$pooledResults
+all_res_f$gene <- rownames(all_res_f)
+all_res_m <- metaObj_m$metaAnalysis$pooledResults
+all_res_m$gene <- rownames(all_res_m)
+
+comb_res <- all_res_f %>% 
+  select(gene, effectSize, effectSizeStandardError, effectSizePval) %>% 
+  left_join(all_res_m %>% select(gene, effectSize, effectSizeStandardError, effectSizePval), by="gene")
+
+all_res_f2 <- all_res_f %>%  
+  select(gene, effectSize, effectSizeStandardError, effectSizePval) %>%  
+  mutate(l_es=effectSize-1.96*effectSizeStandardError, u_es=effectSize+1.96*effectSizeStandardError)
+
+all_res_m2 <- all_res_m %>%  
+  select(gene, effectSize, effectSizeStandardError, effectSizePval) %>%
+  mutate(l_es=effectSize-1.96*effectSizeStandardError, u_es=effectSize+1.96*effectSizeStandardError)
+
+res3 <- all_res_f2 %>% inner_join(all_res_m2, by=c("gene"))
+
+
+# plot the effect sizes of the sig genes
+ggplot(res3 %>% filter(gene %in% all_sig), 
+       aes(x=effectSize.x, y=effectSize.y))+
+  geom_hline(yintercept = 0, linetype=2)+
+  geom_vline(xintercept = 0, linetype=2)+
+  geom_hline(yintercept = 0.5, linetype=3, col="red")+
+  geom_vline(xintercept = 0.5, linetype=3, col="red")+
+  geom_hline(yintercept = -0.5, linetype=3, col="red")+
+  geom_vline(xintercept = -0.5, linetype=3, col="red")+
+  geom_abline(intercept=0, slope=1)+
+  geom_point(alpha=0.7)+
+  geom_errorbar(aes(ymin=l_es.y, ymax=u_es.y), alpha=0.2)+
+  geom_errorbarh(aes(xmin=l_es.x, xmax=u_es.x),alpha=0.2)+
+  ylim(-2, 2)+
+  xlim(-2, 2)+
+  ylab("effect size (S-NS) - males")+
+  xlab("effect size (S-NS) - females")+
+  theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))
+
+
+# look at genes that are non-overlapping
+diff_es <- res3 %>% 
+  filter(gene %in% all_sig) %>% 
+  filter(l_es.y > u_es.x | l_es.x > u_es.y)
+
+# plot non-overlapping
+ggplot(diff_es, aes(x=effectSize.x, y=effectSize.y))+
+  geom_hline(yintercept = 0, linetype=2)+
+  geom_vline(xintercept = 0, linetype=2)+
+  geom_hline(yintercept = 0.5, linetype=3, col="red")+
+  geom_vline(xintercept = 0.5, linetype=3, col="red")+
+  geom_hline(yintercept = -0.5, linetype=3, col="red")+
+  geom_vline(xintercept = -0.5, linetype=3, col="red")+
+  geom_point(alpha=0.7, color="blue")+
+  geom_errorbar(aes(ymin=l_es.y, ymax=u_es.y), alpha=0.2)+
+  geom_errorbarh(aes(xmin=l_es.x, xmax=u_es.x),alpha=0.2)+
+  geom_label_repel(aes(label=gene), size=3)+
+  ylim(-2, 2)+
+  xlim(-2, 2)+
+  ylab("effect size (S-NS) - males")+
+  xlab("effect size (S-NS) - females")+
+  theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))
+
+```
+
+Try making forest plots using built in + own function
+```{r}
+plot.new()
+forestPlot(metaObj_m, "BTNL8" )
+plot.new()
+forestPlot(metaObj_f, "BTNL8" )
+
+plot.new()
+forestPlot(metaObj_m, "CYP2A6" )
+plot.new()
+forestPlot(metaObj_f, "CYP2A6" )
+
+altForestPlot <- function(metaObj_f, metaObj_m, gene_name){
+  
+  # --- get pooled estimates --- #
+  all_res_f <- metaObj_f$metaAnalysis$pooledResults
+  all_res_m <- metaObj_m$metaAnalysis$pooledResults
+
+  pooled_df <- bind_rows(all_res_f[gene_name, c("effectSize", "effectSizeStandardError")],
+          all_res_m[gene_name, c("effectSize", "effectSizeStandardError")])
+
+  colnames(pooled_df) <- c("es", "se")
+  pooled_df$sex <- c("female", "male")
+  pooled_df$ds <- "summary"
+  
+  # --- get individual ds estimates --- #
+  es_f <- metaObj_f$metaAnalysis$datasetEffectSizes[gene_name,]
+  se_f <- metaObj_f$metaAnalysis$datasetEffectSizeStandardErrors[gene_name,]
+  es_m <- metaObj_m$metaAnalysis$datasetEffectSizes[gene_name,]
+  se_m <- metaObj_m$metaAnalysis$datasetEffectSizeStandardErrors[gene_name,]
+  
+  df_f <- data.frame(cbind("es"=es_f, "se"=se_f) )
+  df_f$ds <- rownames(df_f)
+  df_f$sex <- "female"
+  df_m <- data.frame(cbind("es"=es_m, "se"=se_m) )
+  df_m$ds <- rownames(df_m)
+  df_m$sex <- "male"
+  
+  # --- put it all together in a data frame --- #
+  df2 <- df_f %>% 
+    bind_rows(df_m) %>% 
+    bind_rows(pooled_df) %>% 
+    mutate(ds=factor(ds, levels=c("y2008", "y2009", "y2014", "summary"))) 
+
+  # --- plot! --- #
+  ggplot(df2, aes(y=sex, x=es, col=sex))+
+  geom_vline(xintercept=0, linetype=2)+
+  geom_errorbarh(aes(xmin=es-1.96*se, xmax=es+1.96*se), height=0.1)+theme_bw() +
+    facet_grid(ds ~., switch="y") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.y.left = element_text(angle = 0),
+    axis.line = element_line(colour = "black"))+
+  ggtitle(gene_name)+
+  ylab("")+
+  xlab("effect size (S-NS)")
+}
+
+altForestPlot("ZNF658")
+```
+
+

@@ -1,0 +1,138 @@
+---
+title: "05c_download_explore_exp_data.Rmd"
+author: "E Flynn"
+date: "7/15/2020"
+output: html_document
+---
+
+This reads in all of the expression data and explores it.
+
+TODOs
+- where is the missing data? is it rescued elsewhere? 
+- download from raw
+- look into what is going on with duplicated data more!
+ (specifically the data that is duplicated not by name)
+
+visualization:
+- tsne params
+- try clustering
+
+```{r}
+require('tidyverse')
+require("MetaIntegrator")
+require('Rtsne')
+require('ggfortify')
+```
+
+Read in the pheno data
+```{r}
+sheets7 <- read_csv("data/sae_sl_mapped.csv") 
+sheets8 <- sheets7 %>%
+  filter(!is.na(smok)) %>% # remove the data with missing smok data
+  mutate_at(vars(smok, race_ethnicity, metadata_sex, expr_sex, copd, month, year_bin, vitD, first_study, source_name), ~fct_explicit_na(as.factor(.))) %>%
+  mutate_at(vars(age, pack_years, pm2.5, cilia), ~as.numeric(.)) %>%
+  mutate(submission_date=ymd(submission_date)) 
+sheets8_f <- sheets8 %>% 
+  filter(copd!="y" & expr_sex!="unknown")
+
+# get a list of studies
+gse.list <-  (sheets8_f %>% select(study) %>% unique() %>% separate_rows(study, sep=";") %>% unique())$study
+
+```
+
+Download all of these!
+```{r}
+gses <- getGEOData(gse.list)
+
+exp_mat <- do.call(cbind, lapply(gses$originalData, function(x) x$expr))
+
+# -- deal w/ missing data -- #
+missing_counts <- apply(exp_mat, 2, function(x) sum(is.na(x)))
+
+# ok - well this makes things easy - just exclude missing 
+#table(missing_counts)
+#missing_counts
+#    0 54675 
+# 1252   154 
+
+exp_mat2 <- exp_mat[,missing_counts==0]
+
+# -- remove duplicates -- #
+unique_cols <- unique(unlist(colnames(exp_mat2)))
+exp_mat3 <- exp_mat2[,!duplicated(colnames(exp_mat2))]
+dim(exp_mat3) # 460 columns
+
+# there are duplicates still... BOOO
+exp_mat4 <- exp_mat3[,!duplicated(t(exp_mat3))] # --> 406
+
+# filter the pheno data
+pheno_mat <- sheets8 %>%
+  filter(geo_accession %in% colnames(exp_mat4)) %>%
+  arrange(geo_accession) %>% 
+  filter(copd!="y") 
+
+summary(pheno_mat)
+
+exp_mat5 <- exp_mat4[,pheno_mat$geo_accession]
+# --> 383 samples
+
+save(exp_mat5, pheno_mat, file="data/sae_exp_mat_phe.RData")
+
+```
+
+
+TSNE
+```{r}
+tsne_out <- Rtsne(t(as.matrix(exp_mat5)))
+tsne_out2 <- cbind(data.frame(tsne_out$Y), "geo_accession"=colnames(exp_mat5)) %>%
+  left_join(pheno_mat) %>%
+  mutate(year_bin=factor(year_bin),
+         expr_sex=factor(expr_sex, levels=c("female", "unknown", "male")))
+
+# by smoking/sex
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=expr_sex, shape=smok), alpha=0.7)+
+  theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))
+
+# by year bin
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=first_study))
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=year_bin), alpha=0.7)+
+  theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))
+
+# by submission date
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=submission_date), alpha=0.7)+
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+```
+
+
+PCA
+```{r}
+pcs <- prcomp(t(as.matrix(exp_mat5)), scale. = TRUE)
+autoplot(pcs)
+
+autoplot(pcs, data=pheno_mat, colour='smok')
+autoplot(pcs, data=pheno_mat %>% mutate(expr_sex=factor(expr_sex, levels=c("female", "unknown", "male"))), colour='expr_sex', shape='smok', alpha=0.7)
+autoplot(pcs, data=pheno_mat %>% mutate(year_bin=factor(year_bin)), colour='year_bin', alpha=0.5)
+autoplot(pcs, data=pheno_mat, colour='submission_date')
+```
+
+
+CLUSTERING?
+```{r}
+dmat <- dist(t(exp_mat5))
+hc <- hclust(dmat)
+plot(hc)
+```
