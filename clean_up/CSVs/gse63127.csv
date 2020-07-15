@@ -1,0 +1,231 @@
+,geo_accession,source_name_ch1,age,cilia,copd,department of genetic medicine id:ch1,ethnic,vitD,smok
+1,GSM101101,airway epithelial cells obtained by bronchoscopy and brushing,38,NA,NA,NA,hispanic,NA,NS
+2,GSM190150,airway epithelial cells obtained by bronchoscopy and brushing,34,NA,NA,NA,black,NA,NS
+3,GSM190153,airway epithelial cells obtained by bronchoscopy and brushing,45,NA,NA,NA,hispanic,NA,NS
+4,GSM254157,airway epithelial cells obtained by bronchoscopy and brushing,45,NA,NA,NA,white,NA,S
+5,GSM298223,airway epithelial cells obtained by bronchoscopy and brushing,38,NA,NA,NA,hispanic,NA,NS
+6,GSM298227,airway epithelial cells obtained by bronchoscopy and brushing,29,NA,NA,NA,hispanic,NA,NS
+7,GSM298228,airway epithelial cells obtained by bronchoscopy and brushing,39,NA,NA,NA,asian,NA,NS
+8,GSM298230,airway epithelial cells obtained by bronchoscopy and brushing,39,NA,NA,NA,hispanic,NA,S
+9,GSM298233,airway epithelial cells obtained by bronchoscopy and brushing,36,NA,NA,NA,hispanic,NA,S
+10,GSM298235,airway epithelial cells obtained by bronchoscopy and brushing,46,NA,NA,NA,black,NA,S
+11,GSM298239,airway epithelial cells obtained by bronchoscopy and brushing,46,NA,NA,NA,hispanic,NA,S
+12,GSM298240,airway epithelial cells obtained by bronchoscopy and brushing,41,NA,NA,NA,hispanic,NA,S
+13,GSM549660,small airway epithelium from healthy nonsmokers or smokers with COPD,NA,NA,yes,DGM-02088,NA,NA,S
+14,GSM549681,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00029,black,NA,NS
+15,GSM549682,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00030,white,mid,NS
+16,GSM549683,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00035,black,NA,NS
+17,GSM549684,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00036,black,NA,NS
+18,GSM549685,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00041,black,NA,NS
+19,GSM549686,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00044,black,NA,NS
+20,GSM549687,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00052,white,NA,NS
+21,GSM549688,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00073,white,NA,NS
+22,GSM549689,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00069,white,NA,NS
+23,GSM549690,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00072,black,NA,NS
+24,GSM549691,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00078,white,NA,NS
+25,GSM549693,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00082,NA,NA,NS
+26,GSM549695,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00244,black,mid,NS
+27,GSM549696,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00249,white,high,NS
+28,GSM549698,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00416,white,high,NS
+29,GSM549700,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00465,black,low,NS
+30,GSM549701,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00530,white,high,NS
+31,GSM549702,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00529,NA,NA,NS
+32,GSM549703,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00548,white,mid,NS
+33,GSM549704,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00551,white,NA,NS
+34,GSM549705,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00553,white,NA,NS
+35,GSM549707,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00625,white,high,NS
+36,GSM549708,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00661,black,low,NS
+37,GSM549709,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00685,black,mid,NS
+38,GSM549710,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00696,black,NA,NS
+39,GSM549711,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00757,black,low,NS
+40,GSM549712,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00751,black,NA,NS
+41,GSM549714,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00778,white,high,NS
+42,GSM549716,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00795,black,high,NS
+43,GSM549717,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00814,white,NA,NS
+44,GSM549718,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00906,NA,NA,NS
+45,GSM549719,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00936,black,low,NS
+46,GSM549720,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01141,white,high,NS
+47,GSM549721,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01150,black,low,NS
+48,GSM549722,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01270,NA,NA,NS
+49,GSM549723,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01283,NA,low,NS
+50,GSM549724,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01330,black,mid,NS
+51,GSM549725,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01505,NA,NA,NS
+52,GSM549726,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01521,NA,NA,NS
+53,GSM549727,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01539,NA,high,NS
+54,GSM549728,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01540,black,mid,NS
+55,GSM549729,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01558,NA,NA,NS
+56,GSM549730,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01561,black,mid,NS
+57,GSM549731,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01585,NA,NA,NS
+58,GSM549732,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01590,NA,NA,NS
+59,GSM549733,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01589,NA,NA,NS
+60,GSM549734,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01602,NA,NA,NS
+61,GSM549735,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00564,NA,NA,NS
+62,GSM549736,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01635,NA,NA,NS
+63,GSM549737,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01644,NA,NA,NS
+64,GSM549738,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01682,NA,NA,NS
+65,GSM549739,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01717,NA,NA,NS
+66,GSM549741,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00004,black,NA,S
+67,GSM549742,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00013,white,NA,S
+68,GSM549743,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00205,black,NA,S
+69,GSM549744,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00206,white,NA,S
+70,GSM549745,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00216,white,NA,S
+71,GSM549746,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00193,black,NA,S
+72,GSM549747,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00224,black,NA,S
+73,GSM549748,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00273,black,NA,S
+74,GSM549749,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00278,black,NA,S
+75,GSM549750,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00300,white,NA,S
+76,GSM549751,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00332,black,NA,S
+77,GSM549753,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00446,black,NA,S
+78,GSM549754,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00447,black,NA,S
+79,GSM549755,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00451,black,NA,S
+80,GSM549756,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00464,black,NA,S
+81,GSM549757,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00469,white,NA,S
+82,GSM549758,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00474,black,NA,S
+83,GSM549760,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00537,black,NA,S
+84,GSM549761,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00552,white,NA,S
+85,GSM549762,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00567,black,NA,S
+86,GSM549764,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00593,black,NA,S
+87,GSM549766,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00612,black,NA,S
+88,GSM549767,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00613,NA,NA,S
+89,GSM549768,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00626,white,NA,S
+90,GSM549771,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00703,white,NA,S
+91,GSM549772,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00708,black,NA,S
+92,GSM549773,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00732,NA,NA,S
+93,GSM549774,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00752,black,NA,S
+94,GSM549775,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00743,black,NA,S
+95,GSM549776,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00761,black,NA,S
+96,GSM549777,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00764,black,NA,S
+97,GSM549778,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00797,black,NA,S
+98,GSM549779,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00798,black,NA,S
+99,GSM549780,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00889,black,NA,S
+100,GSM549781,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-00914,white,NA,S
+101,GSM549783,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01011,NA,NA,S
+102,GSM549785,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01022,NA,NA,S
+103,GSM549786,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01025,NA,NA,S
+104,GSM549787,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01050,NA,NA,S
+105,GSM549788,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01089,black,NA,S
+106,GSM549789,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01090,NA,NA,S
+107,GSM549790,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01107,NA,NA,S
+108,GSM549791,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01111,NA,NA,S
+109,GSM549792,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01135,NA,NA,S
+110,GSM549793,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01172,NA,NA,S
+111,GSM549794,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01254,NA,NA,S
+112,GSM549795,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01266,NA,NA,S
+113,GSM549796,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01267,NA,NA,S
+114,GSM549797,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01273,NA,NA,S
+115,GSM549798,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01284,NA,NA,S
+116,GSM549799,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01349,NA,NA,S
+117,GSM549800,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01353,NA,NA,S
+118,GSM549802,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01530,NA,NA,S
+119,GSM549803,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01547,NA,NA,S
+120,GSM549804,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01616,NA,NA,S
+121,GSM549805,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01634,NA,NA,S
+122,GSM549806,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01642,NA,NA,S
+123,GSM549807,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01698,NA,NA,S
+124,GSM549808,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01556,NA,NA,S
+125,GSM549809,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01775,NA,NA,S
+126,GSM549810,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01790,NA,NA,S
+127,GSM549811,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01910,NA,NA,S
+128,GSM549812,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01973,NA,NA,S
+129,GSM549813,small airway epithelium from healthy nonsmokers or healthy smokers,NA,NA,NA,DGM-01980,NA,NA,S
+130,GSM1056120,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+131,GSM1056121,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+132,GSM1056122,small airway epithelium brushing,NA,7.49829,NA,NA,NA,NA,S
+133,GSM1056123,small airway epithelium brushing,NA,7.7322,NA,NA,NA,NA,S
+134,GSM1056124,small airway epithelium brushing,NA,8.07239,NA,NA,NA,NA,S
+135,GSM1056125,small airway epithelium brushing,NA,6.15053,NA,NA,NA,NA,S
+136,GSM1056126,small airway epithelium brushing,NA,7.19703,NA,NA,NA,NA,S
+137,GSM1056127,small airway epithelium brushing,NA,7.40795,NA,NA,NA,NA,S
+138,GSM1056128,small airway epithelium brushing,NA,6.85311,NA,NA,NA,NA,S
+139,GSM1056129,small airway epithelium brushing,NA,7.07429,NA,NA,NA,NA,S
+140,GSM1056130,small airway epithelium brushing,NA,7.27673,NA,NA,NA,NA,S
+141,GSM1056131,small airway epithelium brushing,NA,7.78135,NA,NA,NA,NA,S
+142,GSM1056132,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+143,GSM1056133,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+144,GSM1056134,small airway epithelium brushing,NA,6.78668,NA,NA,NA,NA,S
+145,GSM1056135,small airway epithelium brushing,NA,6.89407,NA,NA,NA,NA,S
+146,GSM1056136,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+147,GSM1056137,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+148,GSM1056138,small airway epithelium brushing,NA,5.85535,NA,NA,NA,NA,S
+149,GSM1056139,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+150,GSM1056140,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+151,GSM1056141,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+152,GSM1056142,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+153,GSM1056143,small airway epithelium brushing,NA,6.83186,NA,NA,NA,NA,S
+154,GSM1056144,small airway epithelium brushing,NA,6.92955,NA,NA,NA,NA,S
+155,GSM1056145,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+156,GSM1056146,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+157,GSM1056147,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+158,GSM1056148,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+159,GSM1056149,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+160,GSM1056150,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+161,GSM1056151,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+162,GSM1056152,"small airway epithelium (SAE), NS",NA,NA,NA,NA,NA,NA,NS
+163,GSM1056153,small airway epithelium brushing,NA,6.07807,NA,NA,NA,NA,S
+164,GSM1074715,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+165,GSM1074716,small airway epithelium brushing,NA,7.01968,NA,NA,NA,NA,S
+166,GSM1074717,small airway epithelium brushing,NA,5.85311,NA,NA,NA,NA,S
+167,GSM1074718,small airway epithelium brushing,NA,6.18775,NA,NA,NA,NA,S
+168,GSM1074719,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+169,GSM1074720,small airway epithelium brushing,NA,5.94677,NA,NA,NA,NA,S
+170,GSM1074721,small airway epithelium brushing,NA,5.7365,NA,NA,NA,NA,S
+171,GSM1074722,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+172,GSM1074723,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+173,GSM1074724,small airway epithelium brushing,NA,6.45982,NA,NA,NA,NA,S
+174,GSM1074725,small airway epithelium brushing,NA,7.16176,NA,NA,NA,NA,S
+175,GSM1074726,small airway epithelium brushing,NA,6.02311,NA,NA,NA,NA,S
+176,GSM1074727,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+177,GSM1074728,small airway epithelium brushing,NA,7.84439,NA,NA,NA,NA,S
+178,GSM1074729,small airway epithelium brushing,NA,7.32101,NA,NA,NA,NA,S
+179,GSM1074730,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+180,GSM1074731,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+181,GSM1074732,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+182,GSM1074733,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+183,GSM1074734,small airway epithelium brushing,NA,6.99291,NA,NA,NA,NA,S
+184,GSM1074735,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+185,GSM1074736,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+186,GSM1074737,small airway epithelium brushing,NA,7.25948,NA,NA,NA,NA,S
+187,GSM1074738,small airway epithelium brushing,NA,7.08977,NA,NA,NA,NA,S
+188,GSM1074739,small airway epithelium brushing,NA,7.52665,NA,NA,NA,NA,S
+189,GSM1074740,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+190,GSM1074741,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+191,GSM1074742,small airway epithelium brushing,NA,7.75275,NA,NA,NA,NA,S
+192,GSM1074743,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+193,GSM1074744,small airway epithelium brushing,NA,8.57827,NA,NA,NA,NA,S
+194,GSM1074745,small airway epithelium brushing,NA,6.78829,NA,NA,NA,NA,S
+195,GSM1074746,small airway epithelium brushing,NA,5.28288,NA,NA,NA,NA,S
+196,GSM1074747,small airway epithelium brushing,NA,6.64001,NA,NA,NA,NA,S
+197,GSM1074748,small airway epithelium brushing,NA,6.47906,NA,NA,NA,NA,S
+198,GSM1074749,small airway epithelium brushing,NA,7.28888,NA,NA,NA,NA,S
+199,GSM1074750,small airway epithelium brushing,NA,6.79858,NA,NA,NA,NA,S
+200,GSM1074751,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+201,GSM1074752,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+202,GSM1074753,small airway epithelium brushing,NA,6.64251,NA,NA,NA,NA,S
+203,GSM1074754,small airway epithelium brushing,NA,6.96805,NA,NA,NA,NA,S
+204,GSM1074755,small airway epithelium brushing,NA,6.29608,NA,NA,NA,NA,S
+205,GSM1074756,small airway epithelium brushing,NA,6.57154,NA,NA,NA,NA,S
+206,GSM1074757,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+207,GSM1074758,small airway epithelium brushing,NA,4.56705,NA,NA,NA,NA,S
+208,GSM1074759,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+209,GSM1074760,small airway epithelium brushing,NA,6.75121,NA,NA,NA,NA,S
+210,GSM1074761,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+211,GSM1074762,small airway epithelium brushing,NA,6.36919,NA,NA,NA,NA,S
+212,GSM1074763,small airway epithelium brushing,NA,5.99102,NA,NA,NA,NA,S
+213,GSM1074764,small airway epithelium brushing,NA,6.34788,NA,NA,NA,NA,S
+214,GSM1074765,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+215,GSM1074766,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+216,GSM1074767,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+217,GSM1074768,small airway epithelium brushing,NA,6.59999,NA,NA,NA,NA,S
+218,GSM1074769,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+219,GSM1074770,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+220,GSM1074771,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+221,GSM1074772,small airway epithelium brushing,NA,5.41523,NA,NA,NA,NA,S
+222,GSM1074773,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+223,GSM1074774,small airway epithelium brushing,NA,6.45331,NA,NA,NA,NA,S
+224,GSM1074775,small airway epithelium brushing,NA,6.70242,NA,NA,NA,NA,S
+225,GSM1074776,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+226,GSM1074777,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+227,GSM1074778,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+228,GSM1261681,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+229,GSM1541841,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
+230,GSM1541843,small airway epithelium brushing,NA,NA,NA,NA,NA,NA,S
