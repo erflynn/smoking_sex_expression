@@ -48,6 +48,12 @@ summary(sheets8 %>%
           select(-study, -geo_accession, -source_name, -dgm_id, -first_study, -year_bin, -month, -study_date) %>%
           select(smok, expr_sex, metadata_sex, copd, everything()))
 
+# shorter summary for plotting
+summary(sheets8 %>% select(copd, race_ethnicity, age) %>%
+  mutate(race_ethnicity=as.character(race_ethnicity)) %>%
+  mutate(race_ethnicity=as.factor(ifelse(str_detect(race_ethnicity,"black"), "black", race_ethnicity))))
+
+
 # filter out COPD or missing expr_sex
 sheets8_f <- sheets8 %>% 
   filter(copd!="y" & expr_sex!="unknown")

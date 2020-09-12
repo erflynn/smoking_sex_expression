@@ -1,0 +1,242 @@
+---
+title: "06b_try_conormalize.Rmd"
+author: "E Flynn"
+date: "9/6/2020"
+output: html_document
+---
+There are a ton of studies from the same lab - we can put them together through co-normalization
+Notes:
+- tried this, did not seem to help
+
+```{r}
+library(COCONUT)
+library('tidyverse')
+prev_data <- read_csv("data/sae_sl_mapped.csv") 
+load("data/sae_exp_mat2.RData") 
+
+
+prev_data2 <- prev_data %>% 
+  filter(expr_sex %in% c("male", "female"),
+         is.na(metadata_sex) | metadata_sex == "NA" |
+         (metadata_sex=="M" & expr_sex=="male") |
+          (metadata_sex=="F" & expr_sex=="female"),
+         (is.na(copd) | copd =="n")) %>%
+  filter(geo_accession %in% colnames(exp_mat4))
+
+
+exp_mat5 <- exp_mat4[,prev_data2$geo_accession]
+dim(exp_mat5)
+```
+
+controls - male control
+```{r}
+table(prev_data2$smok, prev_data2$expr_sex)
+prev_data3 <- prev_data2 %>% 
+  select(study, first_study, year_bin, study_date, submission_date, geo_accession, smok, expr_sex) %>%
+  rename(sex=expr_sex) %>%
+  mutate(ctl01=ifelse(smok=="NS" & sex=="male", 0, 1))
+
+# plot the data
+boxplot(exp_mat5[,sample(1:ncol(exp_mat5),10)])
+boxplot(exp_mat5[,sample(1:ncol(exp_mat5),10)])
+
+# tSNE
+require('Rtsne')
+
+tsne_out <- Rtsne(t(as.matrix(exp_mat5)))
+tsne_out2 <- cbind(data.frame(tsne_out$Y), "geo_accession"=colnames(exp_mat5)) %>%
+  left_join(prev_data3) %>%
+  mutate(year_bin=factor(year_bin),
+         sex=factor(sex, levels=c("female", "unknown", "male")))
+
+# by smoking/sex
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=sex, shape=smok), alpha=0.7)+
+  theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))
+
+# by year bin
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=first_study))
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=year_bin), alpha=0.7)+
+  theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))
+
+# by submission date
+ggplot(tsne_out2, aes(x=X1, y=X2))+
+  geom_point(aes(col=submission_date), alpha=0.7)+
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+```
+
+```{r}
+
+prev_data3 <- data.frame(prev_data3, stringsAsFactors = FALSE) %>% unite("grp", c(smok, sex),  sep="-", remove=FALSE)
+rownames(prev_data3) <- prev_data3$geo_accession
+counts <- prev_data3 %>% group_by(first_study, sex, smok) %>% count()  %>% unite("grp", c(smok, sex),  sep="-", remove=FALSE) %>% pivot_wider(names_from="grp", values_from="n", values_fill=0)
+sm_counts <- counts %>% filter(`NS-male`>5)
+
+study_dfs <- prev_data3 %>% 
+  filter(first_study %in% sm_counts$first_study) %>%
+  select(first_study, geo_accession, smok, sex, ctl01) %>%
+  arrange(first_study, ctl01) %>%
+  group_split(first_study)
+
+gse1 <- list("pheno"=study_dfs[[1]] %>% select(-first_study), "genes"=exp_mat5[,study_dfs[[1]]$geo_accession])
+gse2 <- list("pheno"=study_dfs[[2]]  %>% select(-first_study), "genes"=exp_mat5[,study_dfs[[2]]$geo_accession])
+gse3 <- list("pheno"=study_dfs[[3]]  %>% select(-first_study), "genes"=exp_mat5[,study_dfs[[3]]$geo_accession])
+gse4 <- list("pheno"=study_dfs[[4]]  %>% select(-first_study), "genes"=exp_mat5[,study_dfs[[4]]$geo_accession])
+gses <- list(gse1,gse2, gse3, gse4)
+list_gses <- c(study_dfs[[1]]$first_study[[1]],
+                 study_dfs[[2]]$first_study[[1]],
+                 study_dfs[[3]]$first_study[[1]],
+                 study_dfs[[4]]$first_study[[1]])
+res <- COCONUT(GSEs=gses, control.0.col = "ctl01", byPlatform=FALSE)
+# mb it needs to be gene level?
+require('MetaIntegrator')
+gses2 <- getGEOData(list_gses)
+gses3 <- gses2$originalData
+gses3[[1]]$pheno <- prev_data3 %>% 
+  select(geo_accession, smok, sex, ctl01) %>% 
+  semi_join(gses3[[1]]$pheno, by="geo_accession")
+gses3[[1]]$genes <-gses3[[1]]$expr[,gses3[[1]]$pheno$geo_accession]
+rownames(gses3[[1]]$pheno) <- gses3[[1]]$pheno$geo_accession
+
+gses3[[2]]$pheno <- prev_data3 %>% 
+  select(geo_accession, smok, sex, ctl01) %>% 
+  semi_join(gses3[[2]]$pheno, by="geo_accession")
+gses3[[2]]$genes <-gses3[[2]]$expr[,gses3[[2]]$pheno$geo_accession]
+rownames(gses3[[2]]$pheno) <- gses3[[2]]$pheno$geo_accession
+
+gses3[[3]]$pheno <- prev_data3 %>% 
+  select(geo_accession, smok, sex, ctl01) %>% 
+  semi_join(gses3[[3]]$pheno, by="geo_accession")
+gses3[[3]]$genes <-gses3[[3]]$expr[,gses3[[3]]$pheno$geo_accession]
+rownames(gses3[[3]]$pheno) <- gses3[[3]]$pheno$geo_accession
+
+gses3[[4]]$pheno <- prev_data3 %>% 
+  select(geo_accession, smok, sex, ctl01) %>% 
+  semi_join(gses3[[4]]$pheno, by="geo_accession") 
+gses3[[4]]$genes <-gses3[[4]]$expr[,gses3[[4]]$pheno$geo_accession]
+rownames(gses3[[4]]$pheno) <- gses3[[4]]$pheno$geo_accession
+GSEs.COCONUT <- COCONUT(GSEs=gses3, control.0.col = "ctl01")
+COCONUTgenes <- Reduce(cbind, lapply(GSEs.COCONUT$COCONUTList, function(x) x$genes))
+
+classvec <- gses3$GSE11784$pheno$ctl01
+prior <- do.call(cbind, lapply(gses3, function(x) x$genes))
+prior2 <- prior[,!duplicated(t(prior))]
+
+rawgenes <- Reduce(cbind, lapply(GSEs.COCONUT$rawDiseaseList, function(x) x$genes))
+post <- do.call(cbind, 
+                lapply(c(GSEs.COCONUT$controlList$GSEs, GSEs.COCONUT$COCONUTList), function(x) x$genes))
+post2 <- post[,!duplicated(t(post))]
+colnames(post2) <- lapply(colnames(post2), function(x) strsplit(x, split=".", fixed=TRUE)[[1]][[2]])
+
+require('Rtsne')
+tsne_out_prior <- Rtsne(t(as.matrix(prior2)))
+tsne_out_post <- Rtsne(t(as.matrix(post2)))
+
+tsne_out_prior2 <- 
+  cbind(data.frame(tsne_out_prior$Y), "geo_accession"=colnames(prior2)) %>%
+  left_join(prev_data3) %>%
+  mutate(sex=factor(sex, levels=c("female", "unknown", "male")))
+
+tsne_out_post2 <- cbind(data.frame(tsne_out_post$Y), 
+                        "geo_accession"=colnames(post2)) %>%
+  left_join(prev_data3) %>%
+  mutate(sex=factor(sex, levels=c("female", "unknown", "male")))
+
+# by smoking/sex
+ggplot(tsne_out_prior2, aes(x=X1, y=X2))+
+  geom_point(aes(col=sex, shape=smok), alpha=0.7)+
+  theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))
+
+ggplot(tsne_out_post2, aes(x=X1, y=X2))+
+  geom_point(aes(col=sex, shape=smok), alpha=0.7)+
+  theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))
+
+ggplot(tsne_out_prior2, aes(x=X1, y=X2))+
+  geom_point(aes(col=first_study, shape=grp), alpha=0.7)+
+  theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))
+ggsave("figures/before_conorm.png")
+
+ggplot(tsne_out_post2, aes(x=X1, y=X2))+
+  geom_point(aes(col=first_study, shape=grp), alpha=0.7)+
+  theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))
+ggsave("figures/after_conorm.png")
+
+
+prior.t.stats <- apply(prior2, 1, function(geneRow){
+    geneByClass <- split(geneRow, classvec)
+    gene.test <- t.test(geneByClass[[1]], geneByClass[[2]])
+    gene.test$statistic
+})
+
+post.t.stats <- apply(post2, 1, function(geneRow){
+    geneByClass <- split(geneRow, classvec)
+    gene.test <- t.test(geneByClass[[1]], geneByClass[[2]])
+    gene.test$statistic
+})
+
+summary(prior.t.stats-post.t.stats)
+
+
+```
+
+
+```{r}
+require('pvca')
+require('Biobase')
+
+post_cols <- prev_data3 %>% filter(geo_accession %in% colnames(post2))
+prior_cols <- prev_data3 %>% filter(geo_accession %in% colnames(prior2))
+
+eset <- ExpressionSet(assayData=as.matrix(post2[,post_cols$geo_accession]), phenoData=AnnotatedDataFrame(post_cols))
+pvcaObj <- pvcaBatchAssess(eset, c("smok","sex", "first_study"), 0.6)
+
+bp <- barplot(pvcaObj$dat, xlab = "Effects", ylab = "Weighted average proportion variance", ylim= c(0,1.1),col = c("blue"), las=2, main="PVCA estimation bar chart")
+axis(1, at = bp, labels = pvcaObj$label, xlab = "Effects", cex.axis = 0.5, las=2)
+values = pvcaObj$dat 
+new_values = round(values , 3)
+text(bp,pvcaObj$dat,labels = new_values, pos=3, cex = 0.8) 
+
+eset2 <- ExpressionSet(assayData=as.matrix(prior2[,prior_cols$geo_accession]), phenoData=AnnotatedDataFrame(prior_cols))
+pvcaObj2 <- pvcaBatchAssess(eset2, c("smok","sex", "first_study"), 0.6)
+
+bp <- barplot(pvcaObj2$dat, xlab = "Effects", ylab = "Weighted average proportion variance", ylim= c(0,1.1),col = c("blue"), las=2, main="PVCA estimation bar chart")
+axis(1, at = bp, labels = pvcaObj2$label, xlab = "Effects", cex.axis = 0.5, las=2)
+values = pvcaObj2$dat 
+new_values = round(values , 3)
+text(bp,pvcaObj2$dat,labels = new_values, pos=3, cex = 0.8) 
+
+
+
+# REDO meta-analysis part?
+
+# or look at again
+```

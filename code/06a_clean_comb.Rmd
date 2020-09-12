@@ -1,0 +1,315 @@
+---
+title: "06a_clean_combine_other_ds.Rmd"
+author: "E Flynn"
+date: "9/6/2020"
+output: html_document
+---
+
+Code for cleaning the covariate data across a range of tissues.
+
+Note: many of these studies are from the same labs and/or contain overlapping samples!
+
+
+tissues:
+- airway epithelium
+- large airway epithelium
+
+- lung
+- bronchial epithelium
+- alveolar macrophages
+- bronchial alveolar lavage
+
+- nasal epithelium
+- buccal mucosa
+- sputum macrophages
+
+- blood
+
+
+```{r}
+library('tidyverse')
+library('GEOquery')
+```
+
+
+```{r}
+prev_data <- read_csv("data/sae_sl_mapped.csv") 
+prev_data %>% separate_rows(study, sep=";") %>% distinct(study)
+```
+
+AE/large airway
+GSE10006
+GSE4302
+GSE43939
+GSE994
+GSE16696
+GSE11906
+GSE17905
+GSE18385
+GSE19722
+
+
+```{r}
+clean_col <- function(x){
+  if(!str_detect(x, ":")){
+    return(x)
+  }
+  y <- str_split(x, ":")[[1]]
+  return(str_trim(y[[2]]))
+}
+```
+
+```{r}
+gse <- getGEO("GSE10006") # Cornell, Strulovici-Barel
+
+
+
+
+# -------- "GSE4302" ------ #
+
+gse2 <- getGEO("GSE4302") # UCSF, Woodruff
+pDat2 <- pData(gse2[[1]]) %>% select(geo_accession, source_name_ch1, characteristics_ch1, relation, `sample type:ch1`)
+# reanalyzed by: GSE60486 -- double check
+
+pDat2.2 <- pDat2 %>% 
+  select(-relation, -characteristics_ch1) %>% 
+  rename(smok=`sample type:ch1`) %>%
+  filter(!str_detect(smok, "Asthmatic")) %>% 
+  mutate(smok=case_when(smok=="Smoker" ~ "S",
+                        smok=="Healthy control" ~ "NS"))
+
+# -------- "GSE43939" ------ #
+
+gse3 <- getGEO("GSE43939") # Cornell, Strulovici-Barel
+pDat3 <- pData(gse3[[1]]) %>% 
+  select(geo_accession,  source_name_ch1, `smoking status:ch1`) %>%
+  rename(smok=`smoking status:ch1`) %>%
+  mutate(smok=case_when(smok=="smoker"~ "S",
+                        smok=="nonsmoker"~"NS"))
+# NOTE: large -AND- small AE
+
+
+# -------- "GSE994" ------ #
+
+gse4 <- getGEO("GSE994") # BU, Spira
+
+pDat4 <- pData(gse4[[1]]) %>% 
+  select(geo_accession,title, relation, contains("ch1")) %>%
+  select(-contains("protocol"), -contains("taxid"), -contains("organism"), -contains("molecule"))
+# reanalyzed by: GSE60486 -- double check
+
+
+pDat4.2 <- pDat4 %>% 
+  select(-relation) %>%
+  group_by(geo_accession) %>%
+  mutate(across(contains("characteristics_ch1"), ~clean_col(.))) %>%
+  mutate(across(everything(), ~replace_na(., replace=""))) %>%
+  rename("sex"=characteristics_ch1.1, "sex2"=`sex:ch1`,
+         "age"="characteristics_ch1.3", "age2"="age:ch1",
+         "race"="characteristics_ch1.2", "race2"="race:ch1", 
+         "pkyrs"="characteristics_ch1.4", "pkyrs2"="pkyrs:ch1",
+         "history"="characteristics_ch1.5", "history2"="history:ch1",
+         "patient_id"="characteristics_ch1.7", "patient_id2"="patient_id:ch1",
+         "status"="characteristics_ch1.6", "status2"="status:ch1",
+         "tissue"="characteristics_ch1", "tissue2"="tissue:ch1")
+
+# all match
+pDat4.2 %>%
+  filter(sex!=sex2 | age != age2 | race != race2 | pkyrs != pkyrs2 |
+           history != history2 | patient_id != patient_id2 | status != status2 |
+           tissue != tissue2)
+
+pDat4.2 %>% pull(source_type_ch1)
+pDat4.3 <- pDat4.2 %>% 
+  ungroup() %>%
+  select(-contains("2"), -source_name_ch1) %>% 
+  mutate(title=tolower(as.character(title))) %>% 
+  mutate(diff_formatted=str_detect(title, "sample")) %>%
+  mutate(title=str_replace_all(title, "sample|\\_|without cancer", " ")) %>%
+  mutate(id=str_extract(title,"[0-9]+")) %>%
+  mutate(smok_status=str_replace_all(title,"[0-9]+| ", "")) %>%
+  mutate(smok=case_when(smok_status=="currentsmoker"~"S",
+                        smok_status=="neversmoker" ~ "NS")) %>%
+  select(-title, -smok_status) %>%
+  mutate(sex=tolower(sex),
+         race=case_when(race=="CAU" ~ "white",
+                        race=="AFA"~"black",
+                        race=="ASI"~"asian",
+                        race=="" ~ ""))
+# 9/75 have demographic info, 10 are diff formatted -- are these from a different study?
+# //TODO: look at status, patient id, id, history
+```
+
+
+```{r}
+# -------- GSE16696" ------ #
+
+gse5 <- getGEO("GSE16696") # Cornell - Strulovici-Barel
+pDat5 <-pData(gse5[[1]]) %>% 
+  select( geo_accession,title, source_name_ch1,relation, 
+          contains("characteristics"), "Ethnic group:ch1", "Age:ch1", "Sex:ch1", "Smoking status:ch1")
+# reanalyzed by: GSE119087
+
+pDat5.2 <- pDat5 %>% select(-relation) %>%
+    group_by(geo_accession) %>%
+    mutate(across(contains("characteristics_ch1"), ~clean_col(.))) %>%
+    mutate(across(everything(), ~replace_na(., replace=""))) %>%
+    ungroup() %>%
+    rename(age="characteristics_ch1", sex="characteristics_ch1.1", race="characteristics_ch1.2",
+           smok_status="characteristics_ch1.3", race2="Ethnic group:ch1", age2="Age:ch1", 
+           sex2="Sex:ch1", smok_status2="Smoking status:ch1")
+pDat5.3 <- pDat5.2 %>% 
+  select(-contains("2"), -source_name_ch1) %>%
+  mutate(title=as.character(title)) %>%
+  mutate(mas5=str_detect(title, "MAS5")) %>%
+  separate(title, into=c("tissue", "smok1"), sep=",") %>%
+  mutate(id=str_extract(smok1, "[0-9]+"),
+         smok1=str_extract(smok1, "[A-z|\\-]+")) %>%
+  separate(smok_status, into=c("smok", "pkyrs"), sep=",") %>%
+  mutate(pkyrs=str_extract(pkyrs, "[0-9]+"),
+         sex=case_when(sex=="M" ~ "male", sex=="F"~"female"),
+         race=ifelse(race=="hispnaic","hispanic", race)) 
+
+pDat5.3 %>% filter(smok != smok1) # this is messed up. let's stick w smok
+pDat5.4 <- pDat5.3 %>% select(-smok1) %>%
+  mutate(smok=case_when(smok=="non-smoker"~"NS",
+                        smok=="smoker"~"S"))
+
+
+gse6 <- getGEO("GSE11906") # Cornell - Strulovici-Barel
+# reanalyzed by: GSE60486 , GSE119087
+gse7 <- getGEO("GSE17905") # Cornell - Strulovici-Barel
+# reanalyzed by: GSE60486 , GSE119087
+gse8 <- getGEO("GSE19722") # Cornell - Strulovici-Barel
+gse9 <- getGEO("GSE18385") # Cornell - Strulovici-Barel
+
+head(pData(gse9[[1]]))
+```
+SRP024274
+SRP067922
+SRP082973
+```{r}
+
+```
+
+
+LUNG
+GSE10072
+GSE103174
+GSE12667
+GSE1650
+GSE32537
+GSE37768
+GSE43458
+GSE63882
+
+```{r}
+gse10 <- getGEO("GSE10072")
+head(pData(gse10[[1]])) # NCI - Lee, adenocarcinoma study
+# reanalyzed by GSE60486
+
+pDat10 <- pData(gse10[[1]]) %>%
+  select(geo_accession, title, source_name_ch1, contains("characteristics"),
+         "Age at Diagnosis:ch1", "Cigarette Smoking Status:ch1", "Gender:ch1", "Stage:ch1") 
+
+pDat10.2 <- pDat10 %>%
+  group_by(geo_accession) %>%
+  mutate(across(c(title, source_name_ch1),as.character)) %>%
+  mutate(across(contains("characteristics_ch1"), ~clean_col(.))) %>%
+  mutate(across(everything(), ~replace_na(., replace=""))) %>%
+  ungroup() %>% 
+  rename("sex"="characteristics_ch1", "age"="characteristics_ch1.1",
+         "smok_status"="characteristics_ch1.2", "stage"="characteristics_ch1.3",
+         "age2"=`Age at Diagnosis:ch1`, "smok_status2"=`Cigarette Smoking Status:ch1`, 
+         "sex2"="Gender:ch1", "stage2"=`Stage:ch1`)
+# all matches
+pDat10.2 %>% 
+  filter(sex != sex2 | age != age2 | stage != stage2 | smok_status != smok_status2) 
+pDat10.3 <- pDat10.2 %>%
+  select(-contains("2"), -source_name_ch1) %>%
+  separate(title, into=c("cancer_status", "id"), sep="_") %>%
+  mutate(sex=tolower(sex)) %>%
+  mutate(smok=case_when(smok_status=="Never Smoked"~"NS", 
+                        smok_status=="Current Smoker"~"S",
+                        smok_status=="Former Smoker"~"FS")) %>%
+  mutate(cancer=str_detect(cancer_status, "Tumor"))
+
+# remove tumor samples???
+pDat10.4 <- pDat10.3 %>% filter(!cancer, smok_status!="FS")
+
+```
+
+```{r}
+gse11 <- getGEO("GSE103174") # IDIBAPS Barcelona - Guillaume
+pData11 <- pData(gse11[[1]]) %>% 
+  select(geo_accession, title, contains("ch1")) %>% 
+  select(-contains("protocol"), -contains("taxid"), -contains("label"), -contains("organism"))
+
+gse12 <- getGEO("GSE12667")
+gse13 <- getGEO("GSE1650") # no demo
+gse14 <- getGEO("GSE32537")
+gse15 <- getGEO("GSE37768") # no demo
+gse16 <- getGEO("GSE43458") # no demo
+gse17 <- getGEO("GSE63882")
+
+
+```
+
+bronchial epithelium
+GSE97010
+GSE7895
+GSE19027
+```{r}
+gse18 <- getGEO("GSE97010")
+gse19 <- getGEO("GSE7895") # age
+gse20 <- getGEO("GSE19027") # demo
+
+```
+
+alveolar macrophages
+GSE13896
+GSE13931
+```{r}
+gse21 <- getGEO("GSE13896") # demo
+gse22 <- getGEO("GSE13931") # demo
+```
+
+bronchial alveolar lavage
+GSE10038
+GSE37147
+GSE8823
+```{r}
+gse23 <- getGEO("GSE37147") # age
+```
+
+
+
+buccal mucosa
+GSE17913
+GSE40013
+GSE8987
+GSE994
+```{r}
+
+```
+
+nasal epithelium
+GSE8987
+sputum macrophages
+GSE46903
+```{r}
+
+```
+
+
+BLOOD
+GSE55962
+GSE103174
+GSE12585
+GSE42057
+GSE87072
+```{r}
+
+
+```
+
