@@ -8,6 +8,11 @@ There are a ton of studies from the same lab - we can put them together through 
 Notes:
 - tried this, did not seem to help
 
+Possible next steps:
+- use clustering to detect batch?
+- try SVA
+- look into the datasets more to try to figure this out?
+
 ```{r}
 library(COCONUT)
 library('tidyverse')

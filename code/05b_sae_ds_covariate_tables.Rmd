@@ -19,7 +19,7 @@ Helpful function for creating a covariate table
 ```{r}
 covar_table <- function(ds, my_var){
   ds2 <- ds %>%
-    unite(grp,c("smok", "expr_sex"), sep=" - ") %>%
+    unite(grp, c("smok", "expr_sex"), sep=" - ") %>%
     group_by(grp, get(my_var)) %>%
     count() %>%
     ungroup() %>%

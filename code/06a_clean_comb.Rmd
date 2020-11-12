@@ -32,12 +32,48 @@ library('GEOquery')
 ```
 
 
+Get a list of previous studies
 ```{r}
 prev_data <- read_csv("data/sae_sl_mapped.csv") 
-prev_data %>% separate_rows(study, sep=";") %>% distinct(study)
+(prev_studies <- prev_data %>% separate_rows(study, sep=";") %>% distinct(study) %>% pull(study))
+```
+GSE11784 - groups together several series
+
+Helpful functions:
+```{r}
+clean_col <- function(x){
+  if(!str_detect(x, ":")){
+    return(x)
+  }
+  y <- str_split(x, ":")[[1]]
+  return(str_trim(y[[2]]))
+}
+
+combine_cols <- function(pData){
+  pData %>%
+    unite("sex", c(`sex:ch1`, `Sex:ch1`), sep=";", na.rm=TRUE) %>%
+    unite("ethnic", c("ethnic group:ch1", "Ethnic group:ch1"), sep=";", na.rm=TRUE) %>%
+    unite("smok", c("smoking status:ch1", "Smoking status:ch1"), sep=";", na.rm=TRUE) %>%
+    unite("age", c("age:ch1", "Age:ch1"), sep=";", na.rm=TRUE)
+}
+clean_pData <- function(pData){
+  pData %>%
+    select(geo_accession, source_name_ch1, title, sex, ethnic, smok, age) %>%
+    mutate(pack_years=str_extract(smok,"[0-9|\\.]+"),
+           smok=case_when(str_detect(smok, "non-smoker") ~ "NS",
+                          str_detect(smok, "smoker") ~ "S",
+                          TRUE ~ smok),
+           dgm_id=str_extract(title,"[0-9]+")) %>%
+    rename(source_name=source_name_ch1)
+}
 ```
 
-AE/large airway
+TODO: 
+- what were the functions I used before to clean up these data?
+- a lot is the same b/c same group
+
+
+### AE/large airway
 GSE10006
 GSE4302
 GSE43939
@@ -48,24 +84,82 @@ GSE17905
 GSE18385
 GSE19722
 
-
 ```{r}
-clean_col <- function(x){
-  if(!str_detect(x, ":")){
-    return(x)
-  }
-  y <- str_split(x, ":")[[1]]
-  return(str_trim(y[[2]]))
-}
-```
 
-```{r}
+# ------ GSE10006 ------ #
 gse <- getGEO("GSE10006") # Cornell, Strulovici-Barel
+pDat <- pData(gse$GSE10006_series_matrix.txt.gz)
+
+# overlap note: 
+#    GSE119087 [giant study reanalyzing a ton of microarray data, not important - used RMA on raw data]
+#    GSE60486 [looked at COPD, interstudy variability in expression in normal + dz lung tissues]
+pDat %>% distinct(relation) %>% pull(relation) 
+pDat %>% distinct(relation.1) %>% pull(relation.1) 
+
+pDat1.1 <- pDat %>% 
+      rename("age"="characteristics_ch1",
+                "sex"="characteristics_ch1.1",
+                "ethnic"="characteristics_ch1.2",
+                "smok"="characteristics_ch1.3") %>%
+  select(title, geo_accession, submission_date, source_name_ch1, 
+         age, sex, smok, ethnic, 
+         `age:ch1`:`Smoking status:ch1`) %>% # also grab the extra cols so we can confirm they are the same
+  group_by(geo_accession) %>%
+  mutate(across(age:ethnic, ~clean_col(.)))  %>%
+  ungroup()
+
+pDat1.2 <- pDat1.1 %>% 
+  rename(age0=age, sex0=sex, ethnic0=ethnic, smok0=smok) %>%
+  combine_cols() 
+
+# make sure everything matches
+pDat1.2 %>% filter(ethnic0!=ethnic |
+                   age0!=age |
+                   sex0!=sex |
+                   smok0!=smok)
+
+pDat1.3 <- pDat1.2 %>% 
+  clean_pData()
+
+pDat1.4 <- pDat1.3 %>%  
+  group_by(geo_accession) %>%
+  mutate(title=str_split(title, ",")[[1]][[1]]) %>%
+  ungroup() %>%
+  select(-source_name) %>%
+  rename(source_name=title)
+
+# look at counts by sex
+pDat1.4 %>% 
+  filter(smok %in% c("NS", "S")) %>%
+  group_by(sex, smok) %>%
+  count()
 
 
+pDat1.4 %>% 
+  filter(!smok %in% c("NS", "S")) %>% # check other data
+  group_by(sex) %>% 
+  count()
+
+pDat1.4 %>% 
+  group_by(source_name, sex) %>%
+  count()
+
+# ---- look at expression data ---- #
+expData <- data.frame(exprs(gse$GSE10006_series_matrix.txt.gz))
+# boxplot - is it appropriately transformed?
+# PC space - what are the clusters?
 
 
-# -------- "GSE4302" ------ #
+# sex lab QC via clustering
+# - convert to genes
+# - plot
+gpl570 <- getGEO("GPL570")
+tab <- gpl570@dataTable@table %>% select("ID", `Gene Symbol`)
+relevant_genes <- tab %>% filter(`Gene Symbol` %in% c("XIST", "KDM5D", "RPS4Y1"))
+expData$Gene <- rownames(expData)
+expData$Gene <- rownames(expData)
+
+#--------- "GSE4302" ------ #
 
 gse2 <- getGEO("GSE4302") # UCSF, Woodruff
 pDat2 <- pData(gse2[[1]]) %>% select(geo_accession, source_name_ch1, characteristics_ch1, relation, `sample type:ch1`)
@@ -257,7 +351,7 @@ gse17 <- getGEO("GSE63882")
 
 bronchial epithelium
 GSE97010
-GSE7895
+GSE7895 -- different group, used in other for validation
 GSE19027
 ```{r}
 gse18 <- getGEO("GSE97010")

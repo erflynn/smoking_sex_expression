@@ -12,6 +12,13 @@ Note: coexpression not TF networks in this version.
 
 TODO: null dist or other assessment
 
+Other ideas:
+- try std network techniques?
+- GSEA w MSigDB, GO analysis
+  - immunologic gene signatures "ImmuneSigDB"
+  - cancer genes?
+- PROPS, STAMS
+
 ```{r}
 library(lionessR)
 library(igraph)
