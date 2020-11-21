@@ -138,8 +138,10 @@ num_main=100
 num_no=700
 
 betaAs <- c(-1, -0.5, 0.5, 1)
-betaBs <- c(-1, -0.5,0.5, 1)
-betaInts <- c(-1, -0.5, -0.3, -0.1, 0, 0.1, 0.3, 0.5, 1)
+betaBs <- c(0)
+betaInts <- c(0)
+#betaBs <- c(-1, -0.5,0.5, 1)
+#betaInts <- c(-1, -0.5, -0.3, -0.1, 0, 0.1, 0.3, 0.5, 1)
 cross_list <- cross3(betaAs, betaBs, betaInts)
 simAll <- lapply(cross_list, function(x){
   betaA <- x[[1]]; betaB <- x[[2]]; betaInt <- x[[3]];
