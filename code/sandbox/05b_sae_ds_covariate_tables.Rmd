@@ -1,0 +1,177 @@
+---
+title: "05b_sae_ds_covariate_tables"
+author: "E Flynn"
+date: "7/10/2020"
+output: html_document
+---
+
+Code for creating tissue/covariate tables.
+
+
+```{r}
+require('tidyverse')
+require('googlesheets4')
+require('googledrive')
+require('lubridate')
+```
+
+Helpful function for creating a covariate table
+```{r}
+covar_table <- function(ds, my_var){
+  ds2 <- ds %>%
+    unite(grp, c("smok", "expr_sex"), sep=" - ") %>%
+    group_by(grp, get(my_var)) %>%
+    dplyr::count() %>%
+    ungroup() %>%
+    pivot_wider(names_from=grp, 
+                values_from = n, 
+                values_fill = list(n = 0)) 
+  colnames(ds2)[1] <- my_var
+  return(ds2)
+}
+```
+
+Read in the data
+```{r}
+sheets7 <- read_csv("data/sae_sl_mapped.csv") 
+sheets8 <- sheets7 %>%
+  filter(!is.na(smok)) %>% # remove the data with missing smok data
+  mutate_at(vars(smok, race_ethnicity, metadata_sex, expr_sex, copd, month, year_bin, vitD, first_study, source_name), ~fct_explicit_na(as.factor(.))) %>%
+  mutate_at(vars(age, pack_years, pm2.5, cilia), ~as.numeric(.)) %>%
+  mutate(submission_date=ymd(submission_date)) 
+```
+
+```{r}
+
+# --- get the summary of these data --- #
+summary(sheets8 %>% 
+          select(-study, -geo_accession, -source_name, -dgm_id, -first_study, -year_bin, -month, -study_date) %>%
+          select(smok, expr_sex, metadata_sex, copd, everything()))
+
+# shorter summary for plotting
+summary(sheets8 %>% select(copd, race_ethnicity, age) %>%
+  mutate(race_ethnicity=as.character(race_ethnicity)) %>%
+  mutate(race_ethnicity=as.factor(ifelse(str_detect(race_ethnicity,"black"), "black", race_ethnicity))))
+
+
+# filter out COPD or missing expr_sex
+sheets8_f <- sheets8 %>% 
+  filter(copd!="y" & expr_sex!="unknown")
+
+
+# --- smok/sex counts by study --- #
+sheets8_f %>%
+  separate_rows(study, sep=";") %>%
+  covar_table("study")
+
+# --- number of studies per sample --- #
+counts_per_sample <- sheets8_f %>%
+  separate_rows(study, sep=";") %>%
+  group_by(geo_accession) %>%
+  count() %>%
+  ungroup()
+
+ggplot(counts_per_sample)+geom_histogram(aes(x=n), binwidth=1)+
+  ylab("number of samples")+
+  xlab("number of studies")+
+  theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+# -- smok/sex counts per first study -- #
+sheets8_f %>% 
+  group_by(first_study, study_date, smok, expr_sex) %>% 
+  covar_table("first_study")
+```
+
+Race/ethnicity breakdown
+```{r}
+# counts per race/ethnicity group
+ae_only_meta
+(counts_per_re <- ae_only_meta %>%
+  dplyr::select(smok, expr_sex, race_ethnicity) %>%
+  mutate(race_ethnicity=
+           ifelse(str_detect(as.character(race_ethnicity), "black"),
+                  "black", as.character(race_ethnicity))) %>%
+  covar_table("race_ethnicity"))
+  
+re_filt <- ae_only_meta %>%
+  dplyr::select(smok, expr_sex, race_ethnicity) %>%
+  mutate(race_ethnicity=ifelse(str_detect(as.character(race_ethnicity), "black"), "black", as.character(race_ethnicity)),
+         expr_sex=as.character(expr_sex)) %>%
+  filter(!race_ethnicity %in% c("asian", "hispanic", "(Missing)"))
+  
+
+# race vs smok status
+(chisq.race_smok <- chisq.test(table(re_filt$race_ethnicity, re_filt$smok))) # p=0.090
+
+# race vs sex
+(chisq.race_sex <- chisq.test(table(re_filt$race_ethnicity, re_filt$expr_sex))) # p=0.835
+
+
+# -- is the missingness signficiant?
+missing_re <- ae_only_meta %>%
+  dplyr::select(smok, expr_sex, race_ethnicity) %>%
+  mutate(expr_sex=as.character(expr_sex)) %>%
+  mutate(race_missing=ifelse(race_ethnicity=="(Missing)" | is.na(race_ethnicity), "y", "n"))
+missing_re %>%
+  covar_table("race_missing")
+
+(chisq.race_m_smok <- chisq.test(table(missing_re$smok, missing_re$race_missing))) # p = 0.217
+# more smokers with missing data than expected
+
+(chisq.race_m_sex <- chisq.test(table(missing_re$expr_sex, missing_re$race_missing))) # p = 0.597
+```
+
+Look at age data
+```{r}
+
+# -- distribution of age vs category -- #
+ae_only_meta %>%
+  dplyr::select(smok, expr_sex, age) %>%
+  unite(grp,c("smok", "expr_sex"), sep=" - ") %>%
+  ggplot(aes(x=factor(grp), y=age))+
+  geom_violin()+
+    geom_boxplot(width=0.1)+
+  geom_point(position=position_jitter(0.15), alpha=0.5)+theme_bw() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))+
+  xlab("")
+
+# get a list of means
+ae_only_meta %>%
+  dplyr::select(smok, expr_sex, age) %>%
+  filter(!is.na(age)) %>%
+  unite(grp,c("smok", "expr_sex"), sep=" - ") %>%
+  group_by(grp) %>%
+  summarize(mean_age=mean(age), median_age=median(age), sd_age=sd(age))
+
+# perform a statistical test
+aov_in <- ae_only_meta %>%
+  dplyr::select(smok, expr_sex, age) %>%
+  filter(!is.na(age))
+
+two.way <- aov(age ~ smok+expr_sex+smok*expr_sex, data = aov_in)
+summary(two.way) 
+# sex: 0.01, smok: 0.09, sex*smok: 0.67
+
+
+
+# -- missing age -- #
+missing_age <- ae_only_meta %>%
+  dplyr::select(smok, expr_sex, age) %>%
+  mutate(expr_sex=as.character(expr_sex)) %>%
+  mutate(age_missing=ifelse(is.na(age), "y", "n"))
+
+
+
+missing_age %>% covar_table("age_missing")
+
+
+(chisq.age_m_sex <- chisq.test(table(missing_age$expr_sex, missing_age$age_missing))) # p=0.3797
+
+(chisq.age_m_smok <- chisq.test(table(missing_age$smok, missing_age$age_missing))) # p=0.1894
+
+```
+
