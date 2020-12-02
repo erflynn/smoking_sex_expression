@@ -1,24 +1,32 @@
-# extract phenotype information from all of the blood datasets
+# 01c_blood_lung_extract.R
+#
+# Updated phenotyping code that works by extracting information directly
+# from GEOmetadb instead of downloading all the datasets individually.
+#
+# Note: we are also including the "maybe" and "smoking history"
+# datasets here.
+#
+# This only has one example study completed - lots to do!
 
 
 library('tidyverse')
 library('GEOquery')
+library('GEOmetadb')
 
 
-# can I just use GEOmetadb?
-library(GEOmetadb)
-library(tidyverse)
-
-# gse info
-con <- dbConnect(SQLite(), "GEOmetadb.sqlite")
 blood_studies <- read_tsv("data/list_lung_blood.tsv", col_names=F)
 blood_studies_str <- paste(blood_studies$X1, collapse="','")
+
+# connect and grab all the GSE info
+con <- dbConnect(SQLite(), "GEOmetadb.sqlite")
 gse_info <- dbGetQuery(con, sprintf("SELECT gse.gse, title, 
 submission_date, gpl, pubmed_id, contributor, summary, overall_design 
 FROM gse JOIN gse_gpl ON gse.gse=gse_gpl.gse
 WHERE gse.gse IN ('%s');", blood_studies_str))
 
 
+# grab all the GSM info
+# the characteristics_ch1 column is what has the covariate info
 gsm_info <- dbGetQuery(con,  sprintf("SELECT gsm.gsm, gse_gsm.gse, title, source_name_ch1,
 description, gpl, channel_count, organism_ch1, molecule_ch1, characteristics_ch1,
 supplementary_file
@@ -26,11 +34,14 @@ FROM gsm JOIN gse_gsm ON
                        gse_gsm.gsm=gsm.gsm WHERE gse_gsm.gse IN ('%s');", 
                        blood_studies_str))
 
+dbDisconnect(con)
+
 # all human, total RNA, 1 channel
 gsm_info2 <- gsm_info %>% 
   select(-channel_count, -organism_ch1, -molecule_ch1,
          -supplementary_file)
 
+# look at the most common platforms
 gsm_info2 %>% group_by(gpl) %>% count() %>% arrange(desc(n))
 # # A tibble: 11 x 2
 # # Groups:   gpl [11]
@@ -48,10 +59,9 @@ gsm_info2 %>% group_by(gpl) %>% count() %>% arrange(desc(n))
 # 10 GPL96       23
 # 11 GPL16686    10
 
-# gsm, characteristics
 
 
-# is there any smoking data?
+# --- look at whether there is smoking information available --- #
 no_smok <- gsm_info2 %>%
   filter(!str_detect(characteristics_ch1, "S|NS|smok|Smok"),
           !str_detect(source_name_ch1, "S|NS|smok|Smok"),
@@ -71,6 +81,8 @@ intersect(no_smok_gses, smok_gses) # --> rescue these two
 
 no_smok_keep <- no_smok %>% filter(gse %in% smok_gses )
 smok2 <- smok %>% bind_rows(no_smok_keep)
+
+# label tissue
 smok3 <- smok2 %>% mutate(
   tissue2=case_when(
     str_detect(title,"Lung|lung") ~ "lung",
@@ -87,8 +99,9 @@ smok3 <- smok2 %>% mutate(
 # lung: 819 samples, 9 studies
 
     
-gse_w_info <-smok2 %>% group_split(gse) # --> 26 studies
+gse_w_info <- smok2 %>% group_split(gse) # --> 26 studies
 
+# clean up the phenotype data
 get_pheno_table <- function(df){
   df %>% 
   separate_rows(characteristics_ch1, sep=";\t") %>%
@@ -100,6 +113,8 @@ get_pheno_table <- function(df){
 phe_tabs <- lapply(gse_w_info, get_pheno_table) 
 names(phe_tabs) <- unique(smok2$gse)
 
+
+# look at one particular study
 gse10072 <- phe_tabs["GSE10072"][[1]] %>%
   mutate(tissue="lung") %>%
   dplyr::rename('smok'=`Cigarette Smoking Status`,
