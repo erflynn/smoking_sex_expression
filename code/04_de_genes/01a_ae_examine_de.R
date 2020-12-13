@@ -27,11 +27,17 @@ load("data/affy_entrez_to_hgnc.RData")
 add_gene_info <- function(df){
   df <- data.frame(df)
   df$entrezgene_id <- rownames(df)
-  df %>% mutate(entrezgene_id=as.numeric(entrezgene_id)) %>%
+  df2 <- df %>% 
+    mutate(entrezgene_id=as.numeric(entrezgene_id)) %>%
     left_join(convert_genes) %>% 
     dplyr::rename(gene=hgnc_symbol) %>%
     dplyr::select(-entrezgene_id) %>%
     as_tibble()
+  
+  # todo - check this, should remove NAs, duplicates
+  df2 %>% 
+    filter(!is.na(hgnc_symbol)) %>%
+    filter(!duplicated(hgnc_symbol))
 }
 
 
@@ -53,10 +59,21 @@ fit <- eBayes(fit)
 # get the lists of genes for each of the terms:
 #  smoking, sex, sex*smoking interaction
 # note: to get these terms, you'll have to list the fit$coef
+smok_ci <- topTable(fit, coef="smokS", number=nrow(ae_only), confint = TRUE) %>%
+  add_gene_info()
+ggplot(smok_ci %>% head(20), aes(x=gene, y=logFC))+
+  geom_bar(stat="identity")+
+  geom_errorbar(aes(ymin=CI.L, ymax=CI.R))+
+  coord_flip()+
+  theme_bw()
+  
+
+# TODO: update to confint=TRUE
 res_smok <- topTable(fit, coef="smokS", number=nrow(ae_only)) %>% 
   add_gene_info()
 res_sex <- topTable(fit, coef="sexmale", number=nrow(ae_only)) %>% 
   add_gene_info()
+
 res_int <- topTable(fit, coef="smokS:sexmale", number=nrow(ae_only)) %>% 
   add_gene_info()
 

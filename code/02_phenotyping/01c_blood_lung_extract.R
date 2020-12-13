@@ -13,16 +13,25 @@ library('tidyverse')
 library('GEOquery')
 library('GEOmetadb')
 
+# clean up the phenotype data
+get_pheno_table <- function(df){
+  df %>% 
+    separate_rows(characteristics_ch1, sep=";\t") %>%
+    separate(characteristics_ch1, into=c("attr", "value"), sep=":") %>%
+    mutate(value=str_squish(value)) %>%
+    pivot_wider(names_from=attr, values_from=value)
+}
 
-blood_studies <- read_tsv("data/list_lung_blood.tsv", col_names=F)
-blood_studies_str <- paste(blood_studies$X1, collapse="','")
+
+lb_studies <- read_tsv("data/list_lung_blood.tsv", col_names=F)
+lb_studies_str <- paste(lb_studies$X1, collapse="','")
 
 # connect and grab all the GSE info
-con <- dbConnect(SQLite(), "GEOmetadb.sqlite")
+con <- dbConnect(SQLite(), "../GEOmetadb.sqlite")
 gse_info <- dbGetQuery(con, sprintf("SELECT gse.gse, title, 
 submission_date, gpl, pubmed_id, contributor, summary, overall_design 
 FROM gse JOIN gse_gpl ON gse.gse=gse_gpl.gse
-WHERE gse.gse IN ('%s');", blood_studies_str))
+WHERE gse.gse IN ('%s');", lb_studies_str))
 
 
 # grab all the GSM info
@@ -32,11 +41,14 @@ description, gpl, channel_count, organism_ch1, molecule_ch1, characteristics_ch1
 supplementary_file
 FROM gsm JOIN gse_gsm ON
                        gse_gsm.gsm=gsm.gsm WHERE gse_gsm.gse IN ('%s');", 
-                       blood_studies_str))
+                       lb_studies_str))
 
 dbDisconnect(con)
 
 # all human, total RNA, 1 channel
+gsm_info %>% 
+    select(gsm, gse, gpl, supplementary_file) %>% 
+    write_csv("data/download_info_lung_blood.csv")
 gsm_info2 <- gsm_info %>% 
   select(-channel_count, -organism_ch1, -molecule_ch1,
          -supplementary_file)
@@ -98,24 +110,40 @@ smok3 <- smok2 %>% mutate(
 # blood: 1863 samples, 17 studies
 # lung: 819 samples, 9 studies
 
-    
+lung_dat <- smok3 %>% filter(tissue2=="lung") %>% group_split(gse) 
+blood_dat <- smok3 %>% filter(tissue2=="blood") %>% group_split(gse) 
+
 gse_w_info <- smok2 %>% group_split(gse) # --> 26 studies
 
-# clean up the phenotype data
-get_pheno_table <- function(df){
-  df %>% 
-  separate_rows(characteristics_ch1, sep=";\t") %>%
-  separate(characteristics_ch1, into=c("attr", "value"), sep=":") %>%
-  mutate(value=str_squish(value)) %>%
-  pivot_wider(names_from=attr, values_from=value)
-}
+# count studies / samples
+smok2 %>% group_by(gpl) %>% mutate(n_samples=n()) %>%
+  group_by(gpl, n_samples) %>%
+  distinct(gse) %>% summarize(n_studies=n()) %>% arrange(desc(n_studies)) 
+# gpl      n_samples n_studies
+# <chr>        <int>     <int>
+# 1 GPL10904      1082         7 - Illumina HumanHT-12 V4.0 expression beadchip 
+# 2 GPL570         529         6
+# 3 GPL10399       253         3 - Illumina HumanRef-8 v3.0 
+# 4 GPL96          160         3
+# 5 GPL13667       159         2 - Affymetrix Human Genome U219 Array
+# 6 GPL6244        327         2 - Affymetrix Human Gene 1.0 ST Array
+# 7 GPL6102         97         1 - Illumina human-6 v2.0 expression beadchip	
+# 8 GPL6480         36         1 - Agilent-014850 Whole Human Genome Microarray 4x44K G4112F 
+# 9 GPL6884         39         1 - Illumina HumanWG-6 v3.0 expression beadchip
+
 
 phe_tabs <- lapply(gse_w_info, get_pheno_table) 
 names(phe_tabs) <- unique(smok2$gse)
+lung_tabs <-lapply(lung_dat, get_pheno_table)
+names(lung_tabs) <- unique(smok3 %>% filter(tissue2=="lung") %>% pull(gse))
+save(lung_tabs, file="data/lung_pheno_data.RData")
 
+blood_tabs <-lapply(blood_dat, get_pheno_table)
+names(blood_tabs) <- unique(smok3 %>% filter(tissue2=="blood") %>% pull(gse))
+save(blood_tabs, file="data/blood_pheno_data.RData")
 
 # look at one particular study
-gse10072 <- phe_tabs["GSE10072"][[1]] %>%
+gse10072 <- lung_tabs["GSE10072"][[1]] %>%
   mutate(tissue="lung") %>%
   dplyr::rename('smok'=`Cigarette Smoking Status`,
                 'age'=`Age at Diagnosis`,
