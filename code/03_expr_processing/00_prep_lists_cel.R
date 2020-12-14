@@ -99,5 +99,7 @@ samp_files_raw <- all_ds3 %>% left_join(platform_info %>%
   arrange(gpl, gse)
 
 list_files <- samp_files_raw %>% bind_rows(illumina_studies_raw)
-list_files %>% mutate(manufacturer=ifelse(manufacturer=="Illumina Inc.", "Illumina",
-                                          manufacturer)) %>% write_csv("data/list_f_to_download.csv")
+list_files %>% mutate(manufacturer=case_when(manufacturer=="Illumina Inc." ~ "Illumina",
+                                             manufacturer=="Agilent Technologies" ~ "Agilent",
+                                          TRUE ~ manufacturer)) %>% 
+  write_csv("data/list_f_to_download.csv")

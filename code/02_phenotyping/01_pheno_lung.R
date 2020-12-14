@@ -3,6 +3,8 @@
 # rename the columns/fields so we can start to put it together
 # for lung specifically it is important to retain cancer information + subject IDs because many of the samples are paired cancer/non-cancer samples
 
+library(tidyverse)
+
 lung_pheno <- load("data/lung_pheno_data.RData")
 
 # GSE10072 
@@ -44,7 +46,6 @@ gse103174 <- lung_tabs["GSE103174"][[1]] %>%
                 'pack_years' = 'pack years',
                 'fev1_fvc' = 'fev1/fvc',
                 'metadata_sex'=Sex) %>%
-                #"BMI"=bmi) %>%
   mutate(metadata_sex=tolower(metadata_sex),
          cancer_type="lung",
          cancer=ifelse(cancer_type=="lung", "y", "n"),
@@ -59,7 +60,7 @@ gse103174 <- lung_tabs["GSE103174"][[1]] %>%
 gse103174 %>% mutate(across(c(smok, metadata_sex, contains("cancer"),
                               copd, tissue, tissue2, batch, id, group), as.factor),
                     across(c(age, bmi, fev1_fvc, fev1, dlco, pack_years, lung_t_cells,
-                             lung_macrophages,lung_monocytes), as.numeric))   %>%
+                             lung_macrophages,lung_monocytes, bmi), as.numeric))   %>%
   summary() 
 
 gse103174 %>% ungroup() %>% distinct(group, smok) 
@@ -72,6 +73,8 @@ gse103174.2 <- gse103174 %>%
 write.csv(gse103174.2, 'data/pdata/gse103174.csv')
 
 # GSE12667
+lung_tabs["GSE12667"][[1]] %>%
+  mutate(tissue="lung")  %>% group_by(`Smoking_Status`) %>% count()
 gse12667 <- lung_tabs["GSE12667"][[1]] %>%
   mutate(tissue="lung") %>%
   dplyr::rename('smok'=`Smoking_Status`,
@@ -80,7 +83,7 @@ gse12667 <- lung_tabs["GSE12667"][[1]] %>%
                 'metadata_sex'=Gender) %>%
                 #"BMI"=bmi) %>%
   mutate(metadata_sex=tolower(metadata_sex),
-         cancer=ifelse(source_name_ch1=="Lung", "y", "n"),
+         #cancer=ifelse(source_name_ch1=="Lung", "y", "n"), # none isnt cancer?
          metadata_sex = case_when(
            metadata_sex == "f" ~ "female",
            metadata_sex == "m" ~ "male",
@@ -88,22 +91,58 @@ gse12667 <- lung_tabs["GSE12667"][[1]] %>%
          smok=case_when(
            smok=="Former" ~ "FS",
            smok=="Current" ~ "S",
+           smok=="Never" ~ "NS" # not available for 24
          )) %>%
   group_by(gsm) %>%
   mutate(id=str_split(title, "_")[[1]]) %>%
   select(-source_name_ch1, -title, -description)
 
 gse12667 %>% mutate(across(c(smok, metadata_sex, race, cancer), as.factor))
-gse12667 <- gse12667[, -c(7, 9, 10:83)]
-write.csv(gse12667, 'data/pdata/gse12667.csv')
+#gse12667 <- gse12667[, -c(7, 9, 10:83)] # make more robust by using contains
+gse12667.2 <- gse12667 %>% select(-contains("TSP_Patient"))
+gse12667 %>% pivot_longer(contains("TSP_Patient"), names_to="TSP_Patient", values_to="number") %>%
+  select(gsm, TSP_Patient, number) %>%
+  filter(!is.na(number)) # this doesn't seem to work --> have to redownload and check
+geo_gse12667 <- getGEO("GSE12667")
+additional_pheno <- pData(geo_gse12667[[1]])
+patient_id <- additional_pheno %>% 
+  select(geo_accession, characteristics_ch1.2) %>%
+  dplyr::rename(patient_id=characteristics_ch1.2) %>%
+  mutate(patient_id=str_extract(patient_id, "[0-9]+"))
+gse12667.3 <- gse12667.2 %>% 
+  left_join(patient_id, by=c("gsm"="geo_accession")) %>%
+  mutate(race_ethnicity=case_when(
+    race=="African American" ~ "black",
+    race=="White" ~ "white"
+  )) %>%
+  select(-race, -tissue2)
+gse12667.3 %>% mutate(across(everything(), as.factor)) %>% summary()
+write.csv(gse12667.3, 'data/pdata/gse12667.csv')
   
 # GSE1650 - note: very little phenotypic detail # Ask Emily what to do about this?
+#  exclude this study: all smokers
 gse1650 <- lung_tabs["GSE1650"][[1]] %>%
-  dplyr::rename('tissue' = `source_name_ch1`)
-gse1650$copd <- 'y'
+  #dplyr::rename('tissue' = `source_name_ch1`) %>%
+  mutate(group=str_extract(title, "[A-Z]"),
+         id=str_extract(title, "[0-9]+"),
+         smok="S",  # appears all smokers?
+         copd="y", # how did you get this?
+         tissue="lung")
+table(gse1650$group) # 12 w severe emphysema, 18 with mild/no
+#L  N 
+#18 12 
+gse1650.2 <- gse1650 %>%
+  mutate(severity=case_when(group=="L" ~ "mild",
+                            group=="N" ~ "severe")) %>%
+  select(gsm, gse, gpl, tissue, smok, severity, copd, id)
 
-gse1650 <- gse1650[, -c(3, 4, 5, 8)]
-write.csv(gse1650, 'data/pdata/gse1650.csv')
+gse1650.2 %>% mutate(across(everything(), as.factor)) %>% summary()
+
+#geo_gse1650 <- getGEO("GSE1650")
+#pData(geo_gse1650[[1]]) # re-analyzed by GSE60486
+
+
+write.csv(gse1650.2, 'data/pdata/gse1650.csv')
 
 
 # GSE32537
@@ -120,23 +159,24 @@ gse32537 <- lung_tabs["GSE32537"][[1]] %>%
                 'st_george_total_score' = "st. george's total score",
                 'metadata_sex'=gender) %>%
   mutate(metadata_sex=tolower(metadata_sex),
-         cancer_type="lung",
-         cancer=ifelse(source_name_ch1=="Lung", "y", "n"),
-         #tissue_source=case_when(
-         #  tissue_source==
-         #)
          smok=case_when(
            smok=="nonsmoker" ~ "NS",
-           smok=="former" ~ "FS"
+           smok=="former" ~ "FS",
+           smok=="current" ~ "S"
          )) %>%
   group_by(gsm) %>%
   mutate(id=str_split(title, "_")[[1]]) %>%
-  select(-source_name_ch1, -title, -description)
-gse32537 %>% mutate(across(c(smok, metadata_sex, cancer), as.factor),
-                    age=as.numeric(age))
+  select(-source_name_ch1, -title, -description, -tissue2)
+gse32537.1 <- gse32537 %>% mutate(across(c(smok, metadata_sex, tissue, id, final_diagnosis,
+                             repository, tissue_source, preservative), as.factor),
+                    across(c(age, rin,  st_george_total_score), as.numeric)) # no warning
+gse32537.2 <- gse32537.1 %>% mutate(across(c(pack_years, years_since_quitting, 
+                               fvc_prebronchodilator_perc_predicted, dlco_perc_predicted), as.numeric))
+# cause warnings -- I have checked, all are fine and should be converted to NAs
+gse32537.2 %>%
+  summary()
 
-gse32537 <- gse32537[, -c(18, 20)]
-write.csv(gse32537, 'data/pdata/gse32537.csv')
+write.csv(gse32537.2, 'data/pdata/gse32537.csv')
 
 # GSE37768
 gse37768 <- lung_tabs["GSE37768"][[1]] %>%
@@ -144,38 +184,47 @@ gse37768 <- lung_tabs["GSE37768"][[1]] %>%
   mutate(smok=case_when(
     smok=="Nonsmoker" ~ "NS",
     smok=="healthy smoker" ~ "S",
-    smok=="moderate COPD" ~ "copd"))
+    smok=="moderate COPD" ~ "copd")) %>%
+  mutate(copd=ifelse(smok=="copd", "y", "n")) %>%
+  select(-title, -description, -source_name_ch1) %>%
+  dplyr::rename(tissue_source=tissue,
+                tissue=tissue2)   
 
-gse37768$copd <- 'n'
-gse37768[21:38, 10] <- 'y'
+gse37768 %>%
+  mutate(across(everything(), as.factor)) %>%
+  summary()
+# advise against hardcoding
+#gse37768$copd <- 'n'
+#gse37768[21:38, 10] <- 'y'
 
-gse37768 <- gse37768[, -c(3, 4)]
 write.csv(gse37768, 'data/pdata/gse37768.csv')
 
 # GSE43458
 gse43458 <- lung_tabs["GSE43458"][[1]] %>%
   mutate(tissue="lung") %>%
   dplyr::rename('smok'="smoking status") %>%
-  mutate(cancer_type="adenocarcinoma",
-         cancer=ifelse(str_detect(title, "adenocarcinoma"), "y", "n"),
+  mutate(cancer=ifelse(str_detect(title, "adenocarcinoma"), "y", "n"),
+         cancer_type=ifelse(cancer=="y", "adenocarcinoma", NA),
          smok=case_when(
            smok=="Never-smoker" ~ "NS",
            smok=="Smoker" ~ "S",
          )) %>%
   group_by(gsm) %>%
   mutate(id=str_split(title, "_")[[1]][[2]]) %>%
-  select(-source_name_ch1, -title, -description)
-gse43458 %>% mutate(across(c(smok), as.factor))
+  select(-source_name_ch1, -title, -description, -tissue2, -histology)
+gse43458 %>% mutate(across(c(smok, cancer, tissue, cancer_type, id), as.factor)) %>%
+  summary()
 
-gse43458 <- gse43458[, -c(5, 6)]
 write.csv(gse43458, 'data/pdata/gse43458.csv')
 
 # GSE43580
+# -- exclude: these are all cancer!
 gse43580 <- lung_tabs["GSE43580"][[1]] %>%
   mutate(tissue="lung") %>%
   dplyr::rename('smok'=`smoking status`,
                 'age'= "age at excision (years)",
                 'metadata_sex' = gender,
+                'clinical_diagnosis_pt'=`clinical diagnosis patient`,
                 'smok_dose_cigday' = "smoking dose (cigarettes/day)",
                 'smok_dur_yrs' = "smoking duration (years)",
                 'height_cm' = "height (cm)",
@@ -190,54 +239,62 @@ gse43580 <- lung_tabs["GSE43580"][[1]] %>%
                 "biosample_confirmed_subdiagnosis" = "biosample confirmed sub-diagnosis",
                 "tumor_grade" = "tumor grade") %>%
   mutate(metadata_sex=tolower(metadata_sex),
-         cancer_type="lung",
-         cancer=ifelse(source_name_ch1=="Lung", "y", "n"),
-         #tissue_source=case_when(
-         #  tissue_source==
-         #)
          smok=case_when(
            smok=="Occasional Use" ~ "S",
            smok=="Previous Use" ~ "FS",
-           smok=="Current Use" ~ "S"
+           smok=="Current Use" ~ "S",
+           smok=="Never Used" ~ "NS"
          )) %>%
   group_by(gsm) %>%
-  mutate(id=str_split(title, "_")[[1]][[2]]) %>%
   select(-source_name_ch1, -title, -description)
-gse43580$cancer <- 'y'
-gse43580 %>% mutate(across(c(smok, metadata_sex, cancer), as.factor),
-                    age=as.numeric(age))
+gse43580.1 <- gse43580 %>% mutate(across(c(smok, metadata_sex, clinical_diagnosis_pt,
+                             sample_recovery_type, ethnicity, tumor_grade, tnm_stage, ajcc_uicc_stage,
+                             clinical_diagnosis_specimen, sbv_challenge_gold_standard, biosample_confirmed_diagnosis,
+                             biosample_confirmed_subdiagnosis), as.factor),
+                    across(c(age, weight_kg, height_cm, bmi, smok_dur_yrs, smok_dose_cigday,
+                             excision_year, rin), as.numeric)) %>%
+  select(-tissue) %>%
+  dplyr::rename(tissue=tissue2)
+gse43580.1 %>%
+  summary()
 
-gse43580 <- gse43580[, -c(8)]
-write.csv(gse43580, 'data/pdata/gse43580.csv')
+write.csv(gse43580.1, 'data/pdata/gse43580.csv')
 
 # GSE63882
+# ?? exclude: cell line + all cancer 
 gse63882 <- lung_tabs["GSE63882"][[1]] %>%
   mutate(tissue="lung") %>%
+  select(-tissue2, -description) %>%
   dplyr::rename('smok'=`smoker`,
                 'metadata_sex' = "gender",
-                ) %>%
+                cancer_type=histology,
+                race_ethnicity=race,
+                source=source_name_ch1,
+                pack_years=`pack-years`) %>%
   mutate(metadata_sex=tolower(metadata_sex),
-         cancer_type="adenocarcinoma",
+         race_ethnicity=tolower(race_ethnicity),
+         # cancer_type="adenocarcinoma", # not all are this
          metadata_sex = case_when(
            metadata_sex == "f" ~ "female",
            metadata_sex == "m" ~ "male",
          ),
          smok=case_when(
            smok=="Y" ~ "S",
-           smok=="N" ~ "NS"
+           smok=="N" ~ "NS",
+           smok=="Ex-smoker" ~ "FS"
          )) %>%
   group_by(gsm) %>%
-  mutate(id=str_split(title, "_")[[1]][[2]]) %>%
-  select(-source_name_ch1, -title, -description)
+ # mutate(id=str_split(title, "_")[[1]][[2]]) %>%
+  select( -title)
 
-gse63882 %>% mutate(across(c(smok, metadata_sex, cancer), as.factor),
-                    age=as.numeric(age))
+gse63882.1 <- gse63882 %>% mutate(across(c(smok, metadata_sex, cancer_type,race_ethnicity, source, tissue, egfr, kras), as.factor),
+                    across(c(age, pack_years), as.numeric))
+gse63882.1 %>% summary()
+#gse63882$cancer <- 'y'
+#gse63882 <- gse63882[, -c(15)]
+#colnames(gse63882)[11] <- c("pack_years")
+#colnames(gse63882)[12] <- c("cancer_type")
 
-gse63882$cancer <- 'y'
-gse63882 <- gse63882[, -c(15)]
-colnames(gse63882)[11] <- c("pack_years")
-colnames(gse63882)[12] <- c("cancer_type")
-
-write.csv(gse63882, 'data/pdata/gse63882.csv')
+write.csv(gse63882.1, 'data/pdata/gse63882.csv')
 
 

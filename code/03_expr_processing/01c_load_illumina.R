@@ -1,5 +1,5 @@
 library(tidyverse)
-library(beadarray)
+library(lumi)
 
 
 list_f <- read_csv("data/list_f_to_download.csv")
