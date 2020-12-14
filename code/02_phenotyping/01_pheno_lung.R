@@ -3,6 +3,10 @@
 # rename the columns/fields so we can start to put it together
 # for lung specifically it is important to retain cancer information + subject IDs because many of the samples are paired cancer/non-cancer samples
 
+
+# TODO: need to exclude some of these 
+
+
 library(tidyverse)
 
 lung_pheno <- load("data/lung_pheno_data.RData")
@@ -15,8 +19,8 @@ gse10072 <- lung_tabs["GSE10072"][[1]] %>%
                 'metadata_sex'=Gender,
                 "cancer_stage"=Stage) %>%
   mutate(metadata_sex=tolower(metadata_sex),
-         cancer_type="adenocarcinoma",
          cancer=ifelse(source_name_ch1=="Adenocarcinoma of the Lung", "y", "n"),
+         cancer_type=ifelse(cancer=="y", "adenocarcinoma", NA),
          smok=case_when(
            smok=="Never Smoked" ~ "NS",
            smok=="Current Smoker" ~ "S",
@@ -47,8 +51,6 @@ gse103174 <- lung_tabs["GSE103174"][[1]] %>%
                 'fev1_fvc' = 'fev1/fvc',
                 'metadata_sex'=Sex) %>%
   mutate(metadata_sex=tolower(metadata_sex),
-         cancer_type="lung",
-         cancer=ifelse(cancer_type=="lung", "y", "n"),
          smok=case_when(
            smok=="no" ~ "NS",
            smok=="yes" ~ "S",
@@ -57,7 +59,7 @@ gse103174 <- lung_tabs["GSE103174"][[1]] %>%
   mutate(id=str_split(title, "_")[[1]]) %>%
   select(-source_name_ch1, -title, -description)
 
-gse103174 %>% mutate(across(c(smok, metadata_sex, contains("cancer"),
+gse103174 %>% mutate(across(c(smok, metadata_sex, 
                               copd, tissue, tissue2, batch, id, group), as.factor),
                     across(c(age, bmi, fev1_fvc, fev1, dlco, pack_years, lung_t_cells,
                              lung_macrophages,lung_monocytes, bmi), as.numeric))   %>%
