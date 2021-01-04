@@ -3,13 +3,8 @@
 # Updated code for getting the full counts and list of studies
 # from GEO, SRA, and ArrayExpress.
 #  - combines code from "02_new_studies.R" and "smoking_list.R"
-# GOAL:
-#  - get counts in the process
-#  - done at the end of this!
-
-# lists --> deduplications --> organism breakdown
-# --> add in old
-# ??? filter based on availability???
+#  - gets counts in the process
+# Note: this version filters for human RB data
 
 library('tidyverse')
 library('GEOmetadb')
@@ -329,91 +324,4 @@ combined_data_w_annot <- combined_data %>%
 combined_data_w_annot %>% write_csv("data/manual_annot_1231.csv")
 
 
-# ---- 6. Annotate if there is available sample metadata ----- #
 
-# ---- 7. What data is actually available? ---- #
-
-####### SANITY CHECKING SECTION #######
-# STEPS TO BE DONE WITH THIS:
-#  [x] SRAdb search - prefer not? I don't think this will help + missingness
-#  [x] rb metadata -- very little added --> NOPE
-#  [x] ENA biosamples? GEO biosamples?  --> NOPE
-#  - get additional data attributes from ENA
-#      pro: RB is incomplete, also we could look at "source_name", "title", etc, would give us ALL the info
-#      con: I have to download these...
-
-# best way to do this -- use ENA and crawl all available info
-# TODO - first double check if we *ARE* looking at all studies vs only present studies
-# ... we're looking at all runs FROM refine-bio
-# -- BioSample search? NOPE --
-# public + in SRA
-#biosample <- vroom("~/Downloads/biosample_result.txt", delim="\n", col_names="bios_list") # GROSS
-# 
-# # ---- SRAdb ---- #
-# # we know is missing info, do this server-side
-# 
-# library('SRAdb')
-# sra_con <- dbConnect(SQLite(), "SRAmetadb.sqlite")
-# sra_studies <- dbGetQuery(sra_con, "SELECT study_accession, study_title, study_type, 
-# study_abstract, study_attribute, submission_accession FROM study;")
-# sra_studies2 <- sra_studies %>% filter(is.na(study_type) |
-#                                          study_type %in% c("Transcriptome Seqencing", "Transcriptome Analysis", "Other"))
-# 
-# sra_smok_studies <- sra_studies2 %>%
-#   filter(grepl(SMOK.STR, study_title, ignore.case = T) |
-#            grepl(SMOK.STR, study_abstract, ignore.case = T) |
-#            grepl(SMOK.STR, study_attribute, ignore.case = T)) # 370
-# 
-# sra_samples <- dbGetQuery(sra_con, "SELECT sample_accession, taxon_id, description, 
-#                           sample_attribute, submission_accession FROM sample;")
-# sra_experiments <- dbGetQuery(sra_con, "SELECT experiment_accession, title, 
-#                               design_description, platform, experiment_attribute, 
-#                               submission_accession FROM experiment;")
-# sra_runs <- dbGetQuery(sra_con, "SELECT run_accession, run_attribute, 
-#                        submission_accession FROM run;")
-# 
-# 
-# 
-# 
-# # ----- check: does rb sample data add any? NOPE ----- #
-# rb_smok_rnaseq_sample <- read_csv("../drug_trt/data/01_sample_lists/rb_metadata/human_rnaseq_sample_metadata.csv",
-#                                   col_types="ccccccccccc") %>%
-#   bind_rows(read_csv("../drug_trt/data/01_sample_lists/rb_metadata/mouse_rnaseq_sample_metadata.csv", col_types="ccccccccccc")) %>%
-#   select(acc, title, platform, compound, trt) %>%
-#   rename(sample_acc=acc) %>%
-#   group_by(sample_acc) %>%
-#   mutate(description=paste(c(title, compound, trt), collapse=";")) %>%
-#   filter(grepl(SMOK.STR, description, ignore.case = T) ) # 126
-# 
-# rb_rnaseq_sample2 <- rb_exp_sample_map %>% 
-#   semi_join(rb_smok_rnaseq_sample, by="sample_acc") %>% 
-#   distinct(study_acc) # 9
-# rb_rnaseq_sample2 %>% 
-#   anti_join(metasra_studies)  %>% # 8
-#   anti_join(rb_from_acc) %>% # 8
-#   anti_join(h_rb_smok %>% bind_rows(m_rb_smok)) # no new studies
-# 
-# # ----- check: does refine-bio microarray add any? ------ #
-# h_rb_m <- read_csv("../drug_trt/data/01_sample_lists/rb_metadata/human_microarray_experiment_metadata.csv", col_types = "cccc")
-# m_rb_m <- read_csv("../drug_trt/data/01_sample_lists/rb_metadata/mouse_microarray_experiment_metadata.csv", col_types = "cccc")
-# h_rb_smok_m <- h_rb_m %>%
-#   filter(grepl(SMOK.STR, title, ignore.case = T) |
-#            grepl(SMOK.STR, description, ignore.case = T)) # 192
-# m_rb_smok_m <- m_rb_m %>%
-#   filter(grepl(SMOK.STR, title, ignore.case = T) |
-#            grepl(SMOK.STR, description, ignore.case = T)) # 54
-# 
-# # 1 mouse AE study
-# missing_micro <- h_rb_smok_m %>% bind_rows(m_rb_smok_m) %>% # 246
-#   anti_join(geo_smoking_studies2, by="study_acc") %>%  # 62
-#   anti_join(array_exp_studies, by="study_acc") %>%  # 59
-#   filter(!str_detect(study_acc, "ERP|SRP|DRP")) # 1 study
-# 
-# # 7 SRP studies missing from RNA-seq
-# h_rb_smok_m %>% bind_rows(m_rb_smok_m) %>% 
-#   filter(str_detect(study_acc, "ERP|SRP|DRP")) %>%
-#   anti_join(m_rb_smok %>% bind_rows(h_rb_smok), by="study_acc")
-# 
-# 
-# # there are a ton of studies that just have smoking as a covariate -- how do I ID them?
-# # e.g. E-MTAB-1708 -- though this doesn't have smoking status labels so it is unclear how I'd deal w this

@@ -1,10 +1,33 @@
+# 03_clean_manual_annot.R
+# 1/4/2020
+# Read in results from manual annotation and clean up the results
 
 library(tidyverse)
 library(googlesheets4)
 RB.PATH <- "../drug_trt/data/"
 
-# read in results from manual annotation
+isSuper <- function(s1.samples, s2.samples){
+  # find which set is a super set of the other
+  # returns: 0 (same), 1 (1> 2), 2 (2 > 1), or NA (neither)
+  my_u <- union(s1.samples, s2.samples)
+  my_int <- intersect(s1.samples, s2.samples)
+  if (length(my_u)==length(my_int)){
+    if(setdiff(my_u, my_int)==0){
+      return(0)
+    }
+  }
+  if (length(setdiff(s1.samples, s2.samples)) == 0){
+    return(2)
+  } 
+  if (length(setdiff(s2.samples, s1.samples)) == 0){
+    return(1)
+  }
+  
+  return(NA)
+}
 
+
+# read in the manually annotated sheet I filled in
 my_gs <- read_sheet("https://docs.google.com/spreadsheets/d/1VGK2xPXhQv1yReE701JhkVPKNkI7Wxh3XZ33RoNxowU/edit#gid=1179723923")
 
 # 28 studies
@@ -13,8 +36,6 @@ super_series <- my_gs %>%
   pull(study_acc)
 # grab the studies included in each
 # - not easy to grab via GEOmetadb
-
-
 
 # read in the study_sample mapping
 exp_sample_map <- read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_microarray_exp_to_sample.csv", RB.PATH)) %>%
@@ -33,39 +54,22 @@ study_to_sample <- lapply(exp_sample_map2 %>%
                         function(x) x %>% pull(sample_acc))
 names(study_to_sample) <- unique(exp_sample_map2$study_acc)
 
-# are any studies a full subset of another?
+# identify samples that are present in multiple studies
 sample_to_study <- exp_sample_map2 %>% 
   arrange(sample_acc, study_acc) %>%
   group_by(sample_acc) %>%
   summarise(n=n(), study_acc=paste(study_acc, collapse=";"))
 
+# get the list of all groups of overlap
 distinct_study_strs <- lapply(sample_to_study %>% 
   filter(n>1) %>% 
   distinct(study_acc) %>% 
   mutate(str_id=1:n()) %>%
   group_split(str_id), 
-  function(x) str_split(x %>% pull(study_acc), 
-                        ";")[[1]]) # 171 grps
+  function(x) str_split(x %>% pull(study_acc), ";")[[1]]) # 171 grps
 
 
-isSuper <- function(s1.samples, s2.samples){
-  # returns: 0 (same), 1, 2, or NA
-  my_u <- union(s1.samples, s2.samples)
-  my_int <- intersect(s1.samples, s2.samples)
-  if (length(my_u)==length(my_int)){
-    if(setdiff(my_u, my_int)==0){
-      return(0)
-    }
-  }
-  if (length(setdiff(s1.samples, s2.samples)) == 0){
-    return(2)
-  } 
-  if (length(setdiff(s2.samples, s1.samples)) == 0){
-    return(1)
-  }
-
-  return(NA)
-}
+# go thru and identify supersets + remove their children
 list_same <- list()
 list_super <- list()
 removed_gses <- c()
@@ -112,9 +116,11 @@ for (study_str in 1:length(distinct_study_strs)){
 }
 # none are the same
 # 45 are supersets of the others
+
+
+# --- condense the superset data --- #
 long_sup <- super_df %>% mutate(pair_id=super) %>%
   pivot_longer(c(super, other), names_to="study_type", values_to="study_acc")
-
 long_sup2 <- long_sup %>% 
   left_join(my_gs, by="study_acc") %>%
   mutate(across(keep:smok_grps, ~ifelse(.=="NA", NA, .))) %>%
@@ -142,11 +148,16 @@ sup_studies_dedup <- long_sup2 %>%
   
  
 
+# --- put together --- #
+
 completed_gs <- my_gs %>% 
   anti_join(long_sup %>% distinct(study_acc), by="study_acc") %>% 
   mutate(studies="") %>%
   bind_rows(sup_studies_dedup) %>%
   select(-"...12") 
+
+# --- fix or fill in missing/messy annotations --- #
+
 completed_gs %>% filter(keep=="??")
 # GSE69851 --> no, all nicotine, treated cells
 # GSE61628 --> yes, smokers vs nonsmokers
