@@ -15,6 +15,17 @@ library('tidyverse')
 library('GEOmetadb')
 
 SMOK.STR <- "smok|nicotine|tobacco|cigarette"
+RB.PATH <- "../drug_trt/data/"
+
+# 0. Load the RB data, we are filtering for this
+rb_meta_m <- read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_microarray_experiment_metadata.csv", RB.PATH),
+                      col_types="cccc") 
+h_rb_metadata <- read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_rnaseq_experiment_metadata.csv", RB.PATH) )
+h_rb_metadata2 <- h_rb_metadata %>%
+  bind_rows(rb_meta_m %>% anti_join(h_rb_metadata, by="study_acc") )
+h_rb_metadata2 %>% filter(str_detect(study_acc, "GSE")) %>% nrow() # 14,752 studies
+h_rb_metadata2 %>% filter(str_detect(study_acc, "DRP|SRP|ERP")) %>% nrow() # 8,357 studies
+
 
 # 1. search GEO using GEOmetadb
 con <- dbConnect(SQLite(), "../GEOmetadb.sqlite") # 11/8/2020
@@ -25,13 +36,9 @@ gse_smok <- gse_dat %>%
   mutate(str=paste(c(title, overall_design, summary), collapse=" ")) %>%
   filter(grepl(SMOK.STR, str, ignore.case=TRUE))
 # --> 757. a lot
+
 gse_smok_list <- paste(gse_smok$gse, collapse=c("\',\'"))
-# gse_gpl_info <- dbGetQuery(con, sprintf("SELECT gse.gse, gse.title, organism, 
-#   gse.type, technology, gse_gpl.gpl, gse_gpl.title AS platform FROM gse 
-#   JOIN gse_gpl ON gse.gse=gse_gpl.gse 
-#   JOIN gpl ON gse_gpl.gpl=gpl.gpl
-#   WHERE gse.gse IN (\'%s\');",
-#            gse_smok_list))
+
 
 gsm_dat <- dbGetQuery(con, "SELECT gsm, molecule_ch1, title, source_name_ch1,
                       characteristics_ch1, treatment_protocol_ch1, description, 
@@ -44,10 +51,6 @@ gsm_dat2 <- gsm_dat %>%
   filter(channel_count==1, molecule_ch1 %in% c("total RNA", "polyA RNA")) %>%
   as_tibble()
 
-gsm_dat_w_gse <- dbGetQuery(con, sprintf("SELECT gsm, gse FROM gse_gsm WHERE gsm IN ('%s');",
-                                         paste(gsm_dat2$gsm, collapse=c("\',\'")) ))
-
-
 
 # extremely SLOW - abt 10min
 gsm_dat_smok <- gsm_dat2 %>%
@@ -56,22 +59,51 @@ gsm_dat_smok <- gsm_dat2 %>%
                      treatment_protocol_ch1, description), collapse=" ")) %>%
   filter(grepl(SMOK.STR, str, ignore.case=TRUE))
 
+length(unique(gsm_dat_smok$gsm)) # 36,267
 
 gsm_smok_list <- paste(gsm_dat_smok$gsm, collapse=c("\',\'"))
+
+# A) studies with mentions in the study
 gse_gsm <- dbGetQuery(con, sprintf("SELECT gse,gsm FROM gse_gsm WHERE gse IN ('%s');", gse_smok_list))
 gsm_dat_smok_gse <- gsm_dat2 %>% inner_join(gse_gsm, by="gsm")
 # 373 studies, 24,319 samples
+gsm_dat_smok_gse2 <- gsm_dat_smok_gse %>% semi_join(h_rb_metadata2, by=c("gse"="study_acc"))
+# 185 studies, 13,256 samples
 
-gsm_gse0 <- gsm_dat_smok_gse %>% distinct(gse, gsm)
-gsm_gse <- dbGetQuery(con, sprintf("SELECT gse, gsm FROM gse_gsm WHERE gsm IN ('%s');", gsm_smok_list))
-# 481 studies, 35,752 samples
+gsm_gse0 <- gsm_dat_smok_gse2 %>% distinct(gse, gsm)
 
-gsm_gse2 <- gsm_gse0 %>% bind_rows(gsm_gse) %>% distinct(gse, gsm)
-# 596 studies, 45,577 samples
+# B) studies with mentions in the samples
+gsm_gse <- dbGetQuery(con, sprintf("SELECT gse, gsm FROM gse_gsm WHERE gsm IN ('%s');", gsm_smok_list)) 
+gsm_dat_smok2 <- gsm_dat_smok %>% inner_join(gsm_gse, by="gsm") %>%
+  semi_join(h_rb_metadata2, by=c("gse"="study_acc"))
+# 481 studies, 35,752 samples -->
+# 252 studies, 19,547 samples
+
+#  i) the study/sample pair does not have associated study metadata
+non_overlapping <- gsm_dat_smok2 %>% anti_join(gsm_gse0, by=c("gse", "gsm"))  
+# 223 studies, 22,418 samples -->
+# 113 studies, 11,900 samples
+
+#  ii) overlapping - included in both
+gse_and_gsm_smok_dat <- gsm_dat_smok_gse2 %>% semi_join(gsm_gse, by="gsm")
+# 258 studies, 14,494 samples -->
+# 148 studies, 8,644
+
+#  iii) only in the study but not in the sample?
+gse_dat_smok_no_gsm_dat <- gsm_dat_smok_gse2 %>% anti_join(gsm_gse, by="gsm") 
+# 146 studies, 9,825 samples -->
+# 62 studies, 4,821 samples
+
+
+# C) put it all together
+gsm_gse2 <- gsm_gse0 %>% bind_rows(gsm_gse) %>% distinct(gse, gsm) %>%
+  semi_join(h_rb_metadata2, by=c("gse"="study_acc"))
+# 596 studies, 45,577 samples -->
+# 298 studies, 24,368 samples
 
 # write this out
 gsm_gse2 %>% write_csv("data/gse_gsm_smok.csv")
-
+save(gsm_dat_smok_gse2, gsm_dat_smok2, file="data/geo_smok_attr_pair.RData")
 # add in additional information
 
 # get GPL data
@@ -99,31 +131,33 @@ gpls_part2 <- gpls_only %>%
   filter(!grepl("miR|MiR|microRNA", platform, ignore.case=F))
 
 gpl_data2 <- gpl_data %>% select(gse, gpl) %>% semi_join(gpls_part2, by="gpl")
-length(unique(gpl_data2$gse))
 length(unique(gpl_data2$gpl))
 
-gsm_gse3 <- gsm_gse2 %>% inner_join(gpl_data2)
+gsm_gse3 <- gsm_gse2 %>% inner_join(gpl_data2) #doesn't remove any
+length(unique(gsm_gse3$gse))
+length(unique(gsm_gse3$gsm))
+
 sample_counts <- gsm_gse3 %>% 
   distinct(gse, gsm) %>% 
   group_by(gse) %>% 
-  summarize(num_samples=n())
+  summarise(num_samples=n())
 
 geo_smoking_studies <- gse_dat %>% 
   semi_join(gsm_gse3) %>% 
-  left_join(gpl_data2 %>% group_by(gse) %>% summarize(gpl=paste(gpl, collapse=";"))) %>%
-  left_join(gpl_data %>% distinct(gse, organism) %>% group_by(gse) %>% summarize(organism=paste(organism, collapse=";"))) %>%
+  left_join(gpl_data2 %>% group_by(gse) %>% summarise(gpl=paste(gpl, collapse=";"))) %>%
+  left_join(gpl_data %>% distinct(gse, organism) %>% group_by(gse) %>% summarise(organism=paste(organism, collapse=";"))) %>%
   left_join(sample_counts)  %>%
   as_tibble()
 stopifnot(nrow(geo_smoking_studies)==length(unique(geo_smoking_studies$gse)))
 
 # TODO: add back in type, add in a date column!
-gse_info <- dbGetQuery(con, sprintf("SELECT gse, type, submission_date, pubmed_id,contributor FROM gse
+gse_info <- dbGetQuery(con, sprintf("SELECT gse, type, submission_date, pubmed_id, contributor FROM gse
            WHERE gse IN ('%s')", paste(unique(geo_smoking_studies$gse), collapse=c("\',\'"))))
 geo_smoking_studies2 <- geo_smoking_studies %>% 
   left_join(gse_info %>% select(gse, type, submission_date, pubmed_id)) %>%
-  rename(study_acc=gse)
+  dplyr::rename(study_acc=gse)
 
-geo_smoking_studies2 %>% write_csv("data/geo_smok_studies_1211.csv")
+geo_smoking_studies2 %>% select(-type, -organism) %>% write_csv("data/geo_smok_studies_1231.csv")
 
 # 2. search ArrayExpress using the browser and download
 # search: "smoking OR nicotine OR smoker OR cigarette OR smoke"
@@ -135,21 +169,23 @@ filtered_ae <- ae_experiments %>%
   filter(!grepl("miR|MiR|microRNA|MicroRNA", Title, ignore.case=F)) # 312
 
 filtered_ae2 <- filtered_ae %>% 
-  mutate(Accession=str_replace_all(Accession, "E-GEOD-", "GSE"))
+  mutate(Accession=str_replace_all(Accession, "E-GEOD-", "GSE")) %>%
+  semi_join(h_rb_metadata2, by=c("Accession"="study_acc")) # --> 176
 
-ae_gses <-filtered_ae2 %>% filter(str_detect(Accession, "GSE")) %>% pull(Accession) # 238
-length(intersect(ae_gses, geo_smoking_studies$gse)) # 207 intersect
-length(setdiff(ae_gses, geo_smoking_studies$gse)) # 31 intersect
+ae_gses <- filtered_ae2 %>% filter(str_detect(Accession, "GSE")) %>% pull(Accession) # 238 --> 171
+length(intersect(ae_gses, geo_smoking_studies$gse)) # 170 intersect
+length(setdiff(ae_gses, geo_smoking_studies$gse)) # 1 new
 
 array_exp_studies <- filtered_ae2 %>% 
   anti_join(geo_smoking_studies, by=c("Accession"="gse")) %>% 
-  rename("study_acc"="Accession", "title"="Title", "organism"="Organism", "num_samples"="Assays", "type"="Type") %>%
+  dplyr::rename("study_acc"="Accession", "title"="Title", "organism"="Organism", 
+         "num_samples"="Assays", "type"="Type") %>%
   select(-`Present in Atlas`, -`ArrayExpress URL`)
 
-length(unique(array_exp_studies$study_acc)) # 105 studies
-sum(array_exp_studies$num_samples) # 57097 samples
+length(unique(array_exp_studies$study_acc)) # 105 studies --> 6 studies
+sum(array_exp_studies$num_samples) # 57097 samples --> 189 samples
 stopifnot(nrow(array_exp_studies)==length(unique(array_exp_studies$study_acc)))
-array_exp_studies %>% write_csv("data/array_exp_studies_1211.csv")
+array_exp_studies %>% write_csv("data/array_exp_studies_1231.csv")
 
 # additional fields: description?
 
@@ -163,31 +199,24 @@ sra_human <- read_csv("data/metaSRA-human_samples.csv")
 
 metasra_studies_h <- sra_human %>% 
   group_by(study_id, study_title) %>% 
-  summarize(num_samples=n()) %>%
+  summarise(num_samples=n()) %>%
   mutate(organism="Homo sapiens") # 24
 
 metasra_studies <- metasra_studies_h  %>%
-  rename(study_acc=study_id, title=study_title) %>% 
-  ungroup() # 24
-
+  dplyr::rename(study_acc=study_id, title=study_title) %>% 
+  semi_join(h_rb_metadata2, by="study_acc") %>%
+  ungroup() # 17
 
 # B) Search refine-bio metadata for study title/description
-rb_meta_m <- read_csv("../drug_trt/data/01_sample_lists/rb_metadata/human_microarray_experiment_metadata.csv",
-                      col_types="cccc") %>%
-  filter(str_detect(study_acc, "DRP|ERP|SRP"))
-h_rb_metadata <- read_csv("../drug_trt/data/01_sample_lists/rb_metadata/human_rnaseq_experiment_metadata.csv") 
-h_rb_metadata2 <- h_rb_metadata %>%
-  bind_rows(rb_meta_m %>% anti_join(h_rb_metadata, by="study_acc") )
-h_rb_smok <- h_rb_metadata2 %>%
+rnaseq_rb2 <- h_rb_metadata2 %>% filter(str_detect(study_acc, "DRP|SRP|ERP")) # 8,357 studies
+rnaseq_rb_smok <- rnaseq_rb2 %>%
   filter(grepl(SMOK.STR, title, ignore.case = T) |
            grepl(SMOK.STR, description, ignore.case = T)) # 43
 
 
 
 # C) Look at RNA-seq covariate data
-RB.PATH <- "../drug_trt/data/"
-load(sprintf("%s/data_old/01_sample_lists/all_sample_attrib_clean.RData", RB.PATH) )# --> all_attrib_clean
-length(unique(all_attrib_clean$sample_acc))
+load(sprintf("%s/data_old/01_sample_lists/all_sample_attrib_clean.RData", RB.PATH) ) # --> all_attrib_clean
 
 rb_exp_sample_map <- read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_microarray_exp_to_sample.csv", RB.PATH)) %>%
   bind_rows(read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_rnaseq_exp_to_sample.csv", RB.PATH)))
@@ -218,21 +247,16 @@ rb_exp_sample <-sample_map %>%
   semi_join(rb_smok_attr, by="sample_acc")
 rb_exp <- rb_exp_sample %>% 
   group_by(study_acc) %>% 
-  summarize(num_samples=n()) # --> 214 studies
+  summarise(num_samples=n()) # --> 214 studies
 
 sra_rb_exp <- rb_exp %>% 
   filter(str_detect(study_acc, "ERP|SRP|DRP")) # 36
 # --> adds one AE study
 
-#sra_rb_exp %>% # 41
-#  anti_join(metasra_studies, by="study_acc")  %>% # 24
-#  anti_join(h_rb_smok %>% bind_rows(m_rb_smok), by="study_acc") # 13
-
-
 sra_study_acc <- metasra_studies %>% 
   filter(organism=="Homo sapiens") %>% select(study_acc) %>%
   bind_rows(sra_rb_exp %>% select(study_acc)) %>%
-  bind_rows(h_rb_smok %>% select(study_acc)) %>%
+  bind_rows(rnaseq_rb_smok %>% select(study_acc)) %>%
   distinct(study_acc) # 70
 
 # put together a table
@@ -245,7 +269,7 @@ sra_metadata_filt <- rb_metadata %>% semi_join(sra_study_acc)
 sra_sample_counts <- rb_exp_sample_map %>% 
   semi_join(sra_study_acc) %>% 
   group_by(study_acc) %>%
-  summarize(num_samples=n())
+  summarise(num_samples=n())
 sra_metadata <- sra_metadata_filt %>% 
   left_join(sra_sample_counts, by=c("study_acc"))
 sra_metadata2 <- sra_metadata %>% bind_rows(
@@ -260,7 +284,7 @@ sum(sra_metadata2$num_samples) # 6148 samples, 70 studies
 # - type
 # - platform
 
-sra_metadata %>% write_csv("data/sra_studies_1211.csv")
+sra_metadata %>% write_csv("data/sra_studies_1231.csv")
 
 # ---- 4. Put the data together ----- #
 combined_data <- geo_smoking_studies2 %>% 
@@ -278,32 +302,36 @@ combined_data <- geo_smoking_studies2 %>%
   filter(str_detect(organism, "Homo sapiens")) %>%
   select(-organism)
 
-nrow(combined_data) # 695
+nrow(combined_data) # 367
 (study_counts <- combined_data %>%
   group_by(source) %>%
-  summarize(num_studies=n()) %>%
+  summarise(num_studies=n()) %>%
   pivot_wider(names_from=source, values_from=num_studies, values_fill=0))
-study_counts %>% write_csv("data/study_counts_before_filtering_1211.csv")
+study_counts %>% write_csv("data/study_counts_before_filtering_1231.csv")
 
 (sample_counts <- combined_data %>%
   group_by(source) %>%
-  summarize(tot_samples=sum(num_samples)) %>%
+  summarise(tot_samples=sum(num_samples)) %>%
   pivot_wider(names_from=source, values_from=tot_samples, values_fill=0))
-sample_counts %>% write_csv("data/sample_counts_before_filtering_1211.csv")
+# TODO this includes duplicates!!
+sample_counts %>% write_csv("data/sample_counts_before_filtering_1231.csv")
 
 # ---- 5. Add in previous notes ----- #
 
-prev_manual_annot <- read_csv("data/smok_data_manual_annot_0408.csv")  %>% rename(study_acc=gse) # 274
-prev_manual_annot %>% anti_join(combined_data, by="study_acc") # lost 1
-combined_data %>% semi_join(prev_manual_annot, by="study_acc")  %>% nrow() # 273
-combined_data %>% anti_join(prev_manual_annot, by="study_acc")  %>% nrow() # 422
+prev_manual_annot <- read_csv("data/smok_data_manual_annot_0408.csv")  %>% dplyr::rename(study_acc=gse) # 274
+prev_manual_annot %>% anti_join(combined_data, by="study_acc") # lost 46... :/
+combined_data %>% semi_join(prev_manual_annot, by="study_acc")  %>% nrow() # 228
+combined_data %>% anti_join(prev_manual_annot, by="study_acc")  %>% nrow() # 139
 
 combined_data_w_annot <- combined_data %>% 
   left_join(prev_manual_annot %>% 
               select(study_acc, keep, design, type, treatment, tissue2), by="study_acc")
-combined_data_w_annot %>% write_csv("data/manual_annot_1211.csv")
+combined_data_w_annot %>% write_csv("data/manual_annot_1231.csv")
 
-# ---- 6. What data is actually available? ---- #
+
+# ---- 6. Annotate if there is available sample metadata ----- #
+
+# ---- 7. What data is actually available? ---- #
 
 ####### SANITY CHECKING SECTION #######
 # STEPS TO BE DONE WITH THIS:
