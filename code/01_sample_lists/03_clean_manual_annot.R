@@ -42,6 +42,10 @@ exp_sample_map <- read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_microar
   bind_rows(read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_rnaseq_exp_to_sample.csv", RB.PATH)))
 
 exp_sample_map2 <- exp_sample_map %>% semi_join(my_gs, by="study_acc") %>% distinct()
+exp_sample_map2 %>% distinct(sample_acc) %>% filter(str_detect(sample_acc, "GSM")) %>% nrow() # 26045
+exp_sample_map2 %>% distinct(sample_acc) %>% filter(str_detect(sample_acc, "ERR|SRR|DRR")) %>% nrow() # 3276
+exp_sample_map2 %>% distinct(sample_acc) %>% filter(!str_detect(sample_acc, "ERR|SRR|DRR|GSM")) %>% nrow() # 149
+
 exp_sample_map_c <- exp_sample_map2 %>% group_by(study_acc) %>% count()
 exp_sample_map2 %>% filter(study_acc %in% super_series)
 
@@ -241,7 +245,17 @@ completed_gs5 <- completed_gs4 %>%
     str_detect(tissue2, "lung") & !str_detect(tissue2, "blood") ~ "lung",
     TRUE ~ tissue2
   ),
-  tissue2=str_replace(tissue2, "; ", ";"))
+  tissue2=str_replace(tissue2, "; ", ";")) 
 table((completed_gs5 %>% filter(keep=="yes", type!="treated cells"))$tissue2)
 
-completed_gs5 %>% write_csv("data/annotated_cleaned_studies_0104.csv")
+completed_gs6 <- completed_gs5 %>% mutate(type=
+                           ifelse(keep=="yes" & type=="all smokers", "smoking", type))
+
+completed_gs6 %>% write_csv("data/annotated_cleaned_studies_0104.csv") # supplementary table 1
+completed_gs6 %>% 
+  rename(included=keep,
+         study_type=type,
+         tissue=tissue2) %>%
+  select(-studies, -smok_grps, -design) %>%
+  mutate(across(everything(), ~ifelse(.=="NA" | .=="", NA, .))) %>%
+  write_csv("data/supp_tables/supp_table_1_annot.csv") # supplementary table 1
