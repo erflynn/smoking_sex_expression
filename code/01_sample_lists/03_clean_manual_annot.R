@@ -1,6 +1,15 @@
 # 03_clean_manual_annot.R
 # 1/4/2020
 # Read in results from manual annotation and clean up the results
+#
+# tables generated:
+# - S1 (cleaned anntoations): "data/supp_tables/supp_table_1_annot.csv"
+# intermediate files generated:
+# - sex labels for smoking data: "data/smok_samples_w_sl.csv"
+#
+# note: treated cells are annotated DURING this execution:
+#  treated_cls_to_annot_v2.csv
+
 
 library(tidyverse)
 library(googlesheets4)
@@ -150,17 +159,14 @@ sup_studies_dedup <- long_sup2 %>%
          type=str_replace_all(type, "SuperSeries;", "")) %>%
   mutate(keep=str_replace_all(keep, "\\?\\?;", ""))
   
- 
-
 # --- put together --- #
-
 completed_gs <- my_gs %>% 
   anti_join(long_sup %>% distinct(study_acc), by="study_acc") %>% 
   mutate(studies="") %>%
   bind_rows(sup_studies_dedup) %>%
   select(-"...12") 
 
-# --- fix or fill in missing/messy annotations --- #
+# --- fix or fill in missing annotations --- #
 
 completed_gs %>% filter(keep=="??")
 # GSE69851 --> no, all nicotine, treated cells
@@ -185,12 +191,12 @@ completed_gs2 <- completed_gs %>%
   )
   ) %>%
   mutate(type=str_replace_all(type, "-", ""),
-         type=str_replace_all(type, "smokig|smoing", "smoking"),
+         type=str_replace_all(type, "smokig|smoing", "smoking history"),
          type=str_replace_all(type, "smoker\\b", "smokers"),
          type=case_when(
           str_detect(type, "all smokers") ~ "all smokers",
           str_detect(type,"treated cells") ~ "treated cells",
-          str_detect(type, "smokers vs nonsmokers") ~ "smoking",
+          str_detect(type, "smokers vs nonsmokers") ~ "smoking history",
           type=="not relevant" | str_detect(type, "no smoking information") ~ "no smoking information",
           type=="NA" & (design=="all nonsmokers" | design== "all smokers") ~ design,
           type=="NA" & (design == "current and former smokers" | str_detect(design, "all smokers")) ~ "all smokers",
@@ -198,26 +204,25 @@ completed_gs2 <- completed_gs %>%
           type=="NA" & design=="nicotine receptor KD" ~ "no smoking information",
           TRUE ~ type)) 
   
-table(completed_gs2$keep)
-table(completed_gs2$type)
-completed_gs2 %>% filter(type=="NA")
-#SRP096285 --> all non-smokers
-#SRP115956 -->  "smoking history"
-#SRP093372 --> no smoking information
-# GSE51284 --> no smoking information
+#completed_gs2 %>% filter(type=="NA")
 
 completed_gs3  <- completed_gs2 %>%
   mutate(type=case_when(
     study_acc=="SRP096285" ~ "all nonsmokers",
     study_acc=="SRP115956"  ~ "smoking history",
-    type=="NA" ~ "no smoking information",
+    type=="NA" ~ "not relevant",
+    keep=="yes" & type=="all smokers" ~ "smoking history",
+    type=="treated cells" & keep=="no" ~ "not relevant",
+    type=="no smoking information" ~ "not relevant",
     TRUE ~ type
-  ))
-table(completed_gs3$keep)
-table(completed_gs3$type)
+  )) %>%
+  mutate(type=ifelse(type=="smoking history", "smoking", type)) 
 
-completed_gs3 %>% filter(keep=="yes", type=="treated cells", treatment=="NA") # none
-completed_gs3 %>% filter(keep=="yes", tissue2 %in% c("NA", ""), type!="treated cells") # fill in
+# table(completed_gs3$keep)
+# table(completed_gs3$type)
+# 
+# completed_gs3 %>% filter(keep=="yes", type=="treated cells", treatment=="NA") # none
+# completed_gs3 %>% filter(keep=="yes", tissue2 %in% c("NA", ""), type!="treated cells") # fill in
 completed_gs4 <- completed_gs3 %>%
   mutate(tissue2=case_when(
       study_acc=="GSE29007" ~ "large airway epithelium",
@@ -228,14 +233,16 @@ completed_gs4 <- completed_gs3 %>%
       TRUE ~ tissue2
     )
   )
+
+# clean up tissue / treatment labels 
 completed_gs5 <- completed_gs4 %>%
   mutate(tissue_descript=tissue2) %>%
   mutate(tissue2=case_when(
     str_detect(tissue2, "airway epitheli") ~ "airway epithelium",
     str_detect(tissue2, "placenta|umbilical|cord blood") ~ "placenta or umbilical cord",
-    str_detect(tissue2, "nasal") & str_detect(tissue2, "buccal") ~ "oral;nasal",
-    str_detect(tissue2, "oral|saliva|tongue|buccal") ~ "oral",
-    str_detect(tissue2, "nasal|olfactory") ~ "nasal",
+    str_detect(tissue2, "nasal") & str_detect(tissue2, "buccal") ~ "oral epithelium or mucosa;nasal epithelium",
+    str_detect(tissue2, "oral|saliva|tongue|buccal") ~ "oral epithelium or mucosa",
+    str_detect(tissue2, "nasal|olfactory") ~ "nasal epithelium",
     str_detect(tissue2, "hepatocytes") ~ "liver",
     str_detect(tissue2, "bronchi|HBEC") ~ "bronchial epithelium or brushing",
     str_detect(tissue2, "alveolar") ~ "alveolar macrophages or epithelium",
@@ -243,19 +250,95 @@ completed_gs5 <- completed_gs4 %>%
     tissue2=="sputum macrophages" ~ "sputum",
     str_detect(tissue2, "PBMC|lymphocyte|leukocyte|whole blood|platelets|peripheral") | tissue2=="macrophages" ~ "blood", 
     str_detect(tissue2, "lung") & !str_detect(tissue2, "blood") ~ "lung",
-    TRUE ~ tissue2
+    tissue2=="urothelial" ~ "bladder",
+    TRUE ~ tissue2  
   ),
-  tissue2=str_replace(tissue2, "; ", ";")) 
-table((completed_gs5 %>% filter(keep=="yes", type!="treated cells"))$tissue2)
+  tissue2=str_replace(tissue2, "; ", ";"),
+  treatment=case_when(
+    treatment=="nicotine exposure" ~ "nicotine",
+    treatment %in% c("cigarette smoke extract", "tobacco smoke extract", "cigarette smoke extract exposure",
+                     "cigarette smoke extract; other components", "smoke extract") ~ "cigarette smoke extract",
+    treatment %in% c("cigarette smoke", "tobacco smoke", "tobacco smoke exposure") ~ "whole cigarette smoke",
+    TRUE ~ treatment)) 
 
-completed_gs6 <- completed_gs5 %>% mutate(type=
-                           ifelse(keep=="yes" & type=="all smokers", "smoking", type))
+# --- fix problem studies --- #
+# both treated cells and another category
+  
+completed_gs7 <- completed_gs5 %>% 
+  mutate(type=case_when(
+    study_acc=="GSE76327" ~ "smoking history", # the treated cells are NOT present
+    TRUE ~type))  %>%
+  select(-smok_grps)
 
-completed_gs6 %>% write_csv("data/annotated_cleaned_studies_0104.csv") # supplementary table 1
-completed_gs6 %>% 
+# separate out GSE12587
+to_add <- my_gs %>%
+  filter(study_acc %in% (completed_gs7 %>% 
+    filter(study_acc=="GSE12587") %>%
+    separate_rows(studies, sep=";") %>%
+    pull(studies) )) %>%
+  select(-smok_grps, -`...12`) %>%
+  mutate(tissue_descript=tissue2)
+  
+completed_gs8 <- completed_gs7 %>%
+  filter(study_acc!="GSE12587") %>%
+  bind_rows(to_add) %>%
+  select(-studies, -design) %>%
+  mutate(across(everything(), ~ifelse(.=="NA" | .=="", NA, .)))  
+
+
+# ---- filter by what is present.... ---- #
+exp_sample_map <- read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_microarray_exp_to_sample.csv", RB.PATH)) %>%
+  bind_rows(read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_rnaseq_exp_to_sample.csv", RB.PATH)))
+exp_sample_map2 <- exp_sample_map %>% semi_join(completed_gs8, by="study_acc") %>% distinct()
+length(unique(exp_sample_map2$sample_acc)) # 29467
+exp_sample_map2_c <- exp_sample_map2 %>% group_by(study_acc) %>% count()
+annot_studies2 <- completed_gs8 %>% left_join(exp_sample_map2_c) %>% rename(present_samples=n)
+sum(annot_studies2$present_samples) # 32192
+sample_metadata_filt <- read_csv(sprintf("%s/sample_metadata_filt.csv", RB.PATH),
+                                 col_types="cccccdldcc")
+sex_lab <- sample_metadata_filt %>% 
+  select(sample_acc, sex_lab, present, num_reads, label_type, p_male) %>%
+  pivot_wider(names_from=label_type, values_from=sex_lab)
+
+sex_lab2 <- sex_lab %>% 
+  inner_join(exp_sample_map2) %>% 
+  inner_join(completed_gs8 %>% select(study_acc, keep, type)) %>%
+  mutate(across(c(metadata, expression),
+                ~ifelse(is.na(.), "unlabeled", .))) 
+length(unique(sex_lab2$sample_acc)) # --> 19383 out of 29467
+length(unique(sex_lab2$study_acc)) # --> 267 out of 327
+sex_lab2 %>% write_csv("data/smok_samples_w_sl.csv")
+
+study_counts <- sex_lab2 %>% group_by(study_acc) %>% count()
+completed_gs8_f <- completed_gs8 %>%
+  right_join(study_counts, by="study_acc") %>%
+  select(-num_samples) %>%
+  rename(num_samples=n) 
+
+
+# --- manually annotate treated cell info --- #
+completed_gs8_f %>% 
+  filter(type=="treated cells" & 
+           keep=="yes") %>%
+  write_csv("data/treated_cls_to_annot.csv")
+
+# STOP - wait to annotate - #
+annot_trt <- read_csv("data/treated_cls_to_annot_v2.csv") %>%
+  select(study_acc, tissue2, tissue_descript)
+trt2 <- completed_gs8_f %>% 
+  select(-tissue2, -tissue_descript) %>%
+  inner_join(annot_trt, by="study_acc") 
+
+annot_df_clean <- completed_gs8_f %>%
+  anti_join(annot_trt, by="study_acc") %>%
+  bind_rows(trt2)
+
+# --- write it out --- #
+annot_df_clean %>%
+  mutate(type=ifelse(type=="smoking", "smoking history", type)) %>%
   rename(included=keep,
-         study_type=type,
-         tissue=tissue2) %>%
-  select(-studies, -smok_grps, -design) %>%
-  mutate(across(everything(), ~ifelse(.=="NA" | .=="", NA, .))) %>%
+           study_type=type,
+           tissue=tissue2) %>%
   write_csv("data/supp_tables/supp_table_1_annot.csv") # supplementary table 1
+
+

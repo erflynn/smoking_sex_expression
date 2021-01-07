@@ -1,11 +1,23 @@
 # 01_sex_lab_annot.R
 # annotation breakdown
-# grab the sex labeling results for all the data we kept
+# grab the sex labeling results for all the data we kept and plot
+#
+# figures generated:
+#   - alluvial for breakdown
+#   - tissue bar plot
+#   - bar plots for breakdown (s1?)
+# tables generated:
+#   - s2a annot breakdown counts
+#   - s2b trt counts
+#   - s2c tissue counts
+#   [- s2d trt cl types?]
+#   - s3a+b sample + study breakdown
+# intermed files generated:
+#  - data/smok_study_sex_lab.csv  -- list of all study sex lab
+
 
 library(tidyverse)
 library(ggalluvial)
-RB.PATH <- "../drug_trt/data/"
-
 library(RColorBrewer)
 dark2 <- brewer.pal(8, "Dark2")
 set2 <- brewer.pal(8, "Set2")
@@ -13,59 +25,25 @@ alluv_col <- c(dark2[1], set2[1], set2[4], set2[3], dark2[3], dark2[8])
 
 
 # --- 1. read in the list of studies/samples that we are working with --- #
-annot_studies <- read_csv("data/annotated_cleaned_studies_0104.csv")
-exp_sample_map <- read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_microarray_exp_to_sample.csv", RB.PATH)) %>%
-  bind_rows(read_csv(sprintf("%s/01_sample_lists/rb_metadata/human_rnaseq_exp_to_sample.csv", RB.PATH)))
-exp_sample_map2 <- exp_sample_map %>% semi_join(annot_studies, by="study_acc") %>% distinct()
-length(unique(exp_sample_map2$sample_acc)) # 29467
-exp_sample_map2_c <- exp_sample_map2 %>% group_by(study_acc) %>% count()
-annot_studies2 <- annot_studies %>% left_join(exp_sample_map2_c) %>% rename(present_samples=n)
-sum(annot_studies2$present_samples) # 32192
+annot_studies <- read_csv("data/supp_tables/supp_table_1_annot.csv")
+smok_sl <- read_csv("data/smok_samples_w_sl.csv", col_types="clddccccc")
+(annot_counts <- annot_studies   %>%
+  group_by(included, study_type) %>% 
+  summarise(num_studies=n(), 
+            num_samples=sum(num_samples)) %>%
+  arrange(desc(included)))
+annot_counts %>%
+  write_csv("data/supp_tables/s2_annot_counts.csv") # SUPPLEMENTARY TABLE 2
 
-# --- 2. make plots/or get counts showing the study breakdown --- #
-annot_studies3 <- annot_studies2 %>% 
-  mutate(type=ifelse(str_detect(type, "^smoking"), 
-                     "smoking history", type),
-         type=ifelse((type=="treated cells" & keep=="no") |
-                       type=="no smoking information", "not relevant", type)) 
-  
-
-
-# --- 3. read in sex labels --- #
-
-sample_metadata_filt <- read_csv(sprintf("%s/sample_metadata_filt.csv", RB.PATH),
-                                 col_types="cccccdldcc")
-sex_lab <- sample_metadata_filt %>% 
-  select(sample_acc, sex_lab, present, num_reads, label_type, p_male) %>%
-  pivot_wider(names_from=label_type, values_from=sex_lab)
-
-# note: this step loses a lot of the data
-sex_lab2 <- sex_lab %>% 
-  inner_join(exp_sample_map2) %>% 
-  inner_join(annot_studies3 %>% select(study_acc, keep, type)) %>%
-  mutate(across(c(metadata, expression),
-                ~ifelse(is.na(.), "unlabeled", .))) 
-# length(unique(sex_lab2$sample_acc)) --> 19383 out of 29467
-# length(unique(sex_lab2$study_acc)) --> 266 out of 327
-
-annot_studies4 <- annot_studies3 %>% semi_join(sex_lab2, by="study_acc")
-
-# breakdown by tissue type?
-kept_history <- annot_studies3 %>% 
-  semi_join(annot_studies4, by="study_acc") %>%
-  filter(type=="smoking history") 
+# --- 4. breakdown by tissue type --- #
+kept_history <- annot_studies %>% 
+  filter(study_type=="smoking history") 
 kept_history %>% group_by(source) %>% count()
-tiss <- kept_history %>%
-  mutate(tissue2=ifelse(tissue2=="urothelial", "bladder", tissue2)) %>%
-  mutate(tissue2=case_when(
-    tissue2=="oral" ~ "oral/buccal epithelium or mucosa",
-    tissue2=="nasal" ~ "nasal epithelium",
-    TRUE ~ tissue2
-  )) %>%
-  separate_rows(tissue2, sep=";") %>%
-  group_by(tissue2) %>% count() %>%
+(tiss <- kept_history %>%
+  separate_rows(tissue, sep=";") %>%
+  group_by(tissue) %>% count() %>%
   arrange(desc(n)) %>%
-  rename(tissue=tissue2, num_studies=n)
+  rename( num_studies=n))
 tiss %>% write_csv("data/supp_tables/s2_tiss_breakdown.csv")
 
 tiss %>%
@@ -80,32 +58,30 @@ tiss %>%
   xlab("")
 ggsave("figures/paper_figs/s1_tiss_breakdown.pdf")
 
-# breakdown by smoke exposure + cell line
-
-annot_counts <- annot_studies4   %>%
-  group_by(keep, type) %>% 
-  summarise(num_studies=n(), 
-            num_samples=sum(num_samples), 
-            num_present_samples=sum(present_samples)) %>%
-  arrange(desc(keep))
-annot_counts %>% rename(included=keep,
-                        inclusion_exclusion_reason=type) %>%
-  write_csv("data/supp_tables/s2_annot_counts.csv") # SUPPLEMENTARY TABLE 2
+# --- 5. breakdown by smoke exposure + cell line --- #
+treated_cells <- annot_studies %>%
+  filter(study_type=="treated cells" & included=="yes") 
 
 
-sex_lab2 %>% write_csv("data/smok_samples_w_sl.csv")
+(trt_cls_count <- treated_cells %>% 
+  separate_rows(treatment, sep="; ") %>% 
+  group_by(treatment) %>% 
+  count() %>%
+  arrange(desc(n)) %>%
+  rename(num_studies=n))
+trt_cls_count %>%
+  write_csv("data/supp_tables/s2_trt_breakdown.csv")
 
-# which studies are missing... :/ 
-setdiff(annot_studies3$study_acc, unique(sex_lab2$study_acc))
 
 
-sex_lab_kept <- sex_lab2 %>% 
+# ---- 6. divide up and make alluvials + tables ---- #
+sex_lab_kept <- smok_sl %>% 
   filter(keep=="yes" & type != "treated cells")
-sex_lab_tc <- sex_lab2 %>% 
+sex_lab_tc <- smok_sl %>% 
   filter(keep=="yes" & type == "treated cells")
-sex_lab_all <- sex_lab2 %>% 
+sex_lab_all <- smok_sl %>% 
   filter(keep=="no" & type == "all smokers")
-sex_lab_non <- sex_lab2 %>% 
+sex_lab_non <- smok_sl %>% 
   filter(keep=="no" & type == "all nonsmokers")
 # CHECK PMALE + NUM_READS
 # --- 4. make alluvial diagrams --- #
@@ -245,7 +221,7 @@ sample_sl <- get_sample_counts(sex_lab_kept) %>%
 
 sample_sl %>%
   mutate(across(contains("frac"), ~round(., digits=3))) %>%
-  select(dataset, label_type, num_samples, everything()) %>%
+  select(dataset, label_type, total_samples, everything()) %>%
   write_csv("data/supp_tables/s3a_sample_sex_breakdown.csv")
   
 
