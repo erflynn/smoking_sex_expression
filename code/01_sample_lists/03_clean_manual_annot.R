@@ -336,6 +336,7 @@ annot_df_clean <- completed_gs8_f %>%
 # --- write it out --- #
 annot_df_clean %>%
   mutate(type=ifelse(type=="smoking", "smoking history", type)) %>%
+  mutate(tissue2=ifelse(tissue2=="blood - lymphocytes", "blood", tissue2)) %>%
   rename(included=keep,
            study_type=type,
            tissue=tissue2) %>%
