@@ -85,7 +85,137 @@ ggplot(count_df2 %>%
   ylab("number of subjects")+
   theme(axis.text.x=element_text(angle = 90, vjust = 0.5, hjust=1))
   
-ggsave("tcga_smoking_counts.pdf")  
+ggsave("tcga_smoking_counts.pdf") 
+
+# -- need to figure out if this is what is available
+luad_query <- GDCquery(
+  project = "TCGA-LUAD",
+  data.category = "Transcriptome Profiling", 
+  data.type = "Gene Expression Quantification",
+  workflow.type = "HTSeq - Counts"
+)
+GDCdownload(luad_query)
+luad_data <- GDCprepare(luad_query)
+
+query <- GDCquery(project = "TCGA-LUAD", 
+                  data.category = "Clinical",
+                  data.type = "Clinical Supplement", 
+                  data.format = "BCR Biotab")
+GDCdownload(query)
+clinical.luad <- GDCprepare(query)
+
+pt_df <- clinical.luad$clinical_patient_luad %>%
+  as_tibble() %>%
+  dplyr::rename(smok=tobacco_smoking_history_indicator,
+       sex=gender) %>%
+  filter(smok %in% c("1","2","3","4","5")) %>%
+  mutate(sex=tolower(sex),
+         smok=case_when(
+           smok == "1" ~ "never",
+           smok == "2" ~ "current",
+           TRUE ~ "former"
+         )) %>%
+  dplyr::select(bcr_patient_barcode, bcr_patient_uuid, smok, sex)
+
+#library("DESeq2")
+length(unique(clinical.luad$clinical_patient_luad$bcr_patient_barcode))
+luad_data2 <- luad_data[,!is.na(luad_data$gender)]
+expr_mat <- luad_data2@assays$data$`HTSeq - Counts`
+rownames(expr_mat) <- luad_data2@rowRanges$ensembl_gene_id
+colnames(expr_mat) <- luad_data2@colData@rownames
+
+ibrary('biomaRt')
+# download the data if it doesn't exist, note this takes some time
+mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+convert_genes_tcga <- getBM(attributes = c("hgnc_symbol", "ensembl_gene_id",
+                                      "chromosome_name"), 
+                       filters = "ensembl_gene_id", values = rownames(expr_mat),
+                       mart=mart)
+
+
+#convert_genes <- getBM(attributes = c("hgnc_symbol", "entrezgene_id",
+#"chromosome_name"), 
+#                       filters = "entrezgene_id", values = rownames(ae_only),
+#                       mart=mart)
+save(convert_genes_tcga, file="data/tcga_ensembl_to_hgnc.RData")
+
+add_gene_info_tcga <- function(df){
+  df <- data.frame(df)
+  #df$entrezgene_id <- rownames(df)
+  df$ensembl_gene_id <- rownames(df)
+  df2 <- df %>% 
+    #mutate(entrezgene_id=as.numeric(entrezgene_id)) %>%
+    left_join(convert_genes_tcga, by="ensembl_gene_id") %>% 
+    dplyr::rename(gene=hgnc_symbol) %>%
+    #dplyr::select(-entrezgene_id) %>%
+    dplyr::select(-ensembl_gene_id) %>%
+    as_tibble()
+  
+  # todo - check this, should remove NAs, duplicates
+  df2 %>% 
+    filter(!is.na(gene)) %>%
+    filter(!duplicated(gene))
+}
+
+pheno_dat <- luad_data2@colData
+length(intersect(pheno_dat$patient, clinical.luad$clinical_patient_luad$bcr_patient_barcode))
+
+
+
+pDat2 <- pheno_dat %>% 
+  as_tibble() %>%
+  dplyr::select(barcode, patient, gender, subtype_Smoking.Status) %>%
+  as_tibble() %>%
+  dplyr::select(barcode, patient, gender, subtype_Smoking.Status) %>% 
+  left_join(pt_df, by=c("patient"="bcr_patient_barcode"))
+  #mutate(smok=case_when(
+  #  subtype_Smoking.Status=="Lifelong Non-smoker" ~ 0,
+  #  str_detect(subtype_Smoking.Status, "reformed") ~ 1)) %>%
+  #filter(!is.na(smok)) %>%
+  #mutate(sex=ifelse(gender=="female", 0, 1)) 
+table(pDat2$smok)
+pDat3 <- pDat2 %>% filter(smok %in% c("never", "former"))
+table(pheno_dat$subtype_Smoking.Status)
+#design <-tibble("sex"= pDat2$sex, "smok"=pDat2$smok, "sex*smok"=pDat2$smok*pDat2$sex)
+smok <- factor(pDat3$smok) # smok
+sex <- factor(pDat3$sex) # expr_sex
+design_t <- model.matrix(~smok+sex+sex*smok) # model
+colnames(expr_mat) <- pheno_dat$barcode
+v <- voom(as.matrix(expr_mat[,pDat3$barcode]), design=design, plot=TRUE) #, normalize="quantile"
+fit_t <- lmFit(v, design_t)
+fit_t <- eBayes(fit_t)
+colnames(fit$coefficients)
+tt <- topTable(fit_t, coef="smoknever:sexmale", n=nrow(expr_mat)) %>%
+  add_gene_info_tcga()
+
+tt %>% inner_join(adj_res_int, by="gene") %>%
+  arrange(adj.P.Val.y) %>%
+  ggplot(aes(x=logFC.x, y=logFC.y))+geom_point(alpha=0.5)
+
+topTable(fit, coef="smoknever", n=nrow(expr_mat)) %>%
+  filter(adj.P.Val < 0.05) %>%
+  add_gene_info_tcga()
+
+topTable(fit, coef="sexmale", n=nrow(expr_mat)) %>%
+  filter(adj.P.Val < 0.05)%>%
+  add_gene_info_tcga()
+
+add_gene_info_tcga()
+
+head(tt , 30) %>%
+# ---- TRY LIMMA + VOOM ---- #
+
+# ddsSE <- DESeqDataSet(luad_data2, design = ~ gender)
+# 
+# keep <- rowSums(counts(ddsSE)) >= 10
+# ddsSE <- ddsSE[keep,]
+# ddsSE <- DESeq(ddsSE, parallel=TRUE)
+# resultsNames(ddsSE)
+# res <- results(ddsSE, name = "gender")
+# dea <- as.data.frame(res)
+# summary(res)
+
+# --- STOP ----  #
 
 query <- GDCquery(project = "TCGA-LUAD", 
                   data.category = "Clinical",
