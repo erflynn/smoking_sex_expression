@@ -1,16 +1,46 @@
 
 
 library(tidyverse)
+source("code/00_utils.R")
 
 load("data/study_sample_info.RData") # --> all_stats
-incl_studies <- read_csv("data/incl_studies.csv")
+incl_studies2 <- read_csv("data/incl_studies.csv")
 smok_sl <- read_csv("data/smok_samples_w_sl.csv", col_types="clddccccc")
 my_studies <- all_stats[incl_studies2$study_acc]
+
+
 
 # ---- bronchial ---- #
 
 bronchial <- incl_studies2 %>% filter(tissue %in% c("bronchial epithelium or brushing"))
 intersect(bronchial$study_acc, all_f) # 5 previously done
+
+bronchial %>% pull(study_acc)
+
+# "GSE97010" - validation?
+# acute cigarette exposure
+#fct_summ(my_studies[["GSE97010"]]$df)
+#my_studies[["GSE97010"]]$df %>%
+#  select(-treatment_protocol_ch1, -description, -source_name_ch1) %>%
+# fct_summ()
+
+
+# "GSE8823"  - actually alveolar macrophages from BL
+#fct_summ(my_studies[["GSE8823"]]$df)
+
+# "GSE7895" -- KEEP
+fct_summ(my_studies[["GSE7895"]]$df)
+my_studies[["GSE7895"]]$df %>% select(-description) %>%
+  mutate(tissue=source_name_ch1) %>%
+  add_sl() %>%
+  group_by(characteristics_ch1, sex_lab) %>%
+  count()
+# "GSE37147"
+# "GSE19027" 
+
+
+
+
 missing_bronchial <- setdiff(bronchial$study_acc, all_f)
 
 # "GSE4635"  - appears all male? double check study info 
@@ -143,6 +173,12 @@ incl_studies2 %>% filter(str_detect(tissue, "esophagus"))
 
 incl_studies2 %>% filter(tissue %in% c("bladder"))
 incl_studies2 %>% filter(str_detect(tissue, "alveolar"))
+
+
+# add: "GSE8823"  - actually alveolar macrophages from BL
+fct_summ(my_studies[["GSE8823"]]$df)
+
+
 incl_studies2 %>% filter(str_detect(tissue, "sputum")) # one is done previous
 
 incl_studies2 %>% filter(tissue %in% c("brain"))
@@ -151,3 +187,19 @@ incl_studies2 %>% filter(tissue %in% c("LCL"))
 incl_studies2 %>% filter(tissue %in% c("liver"))
 incl_studies2 %>% filter(tissue %in% c("kidney"))
 incl_studies2 %>% filter(tissue %in% c("muscle"))
+
+
+# from other:
+# "ERP110816" - SKIN
+# only one smoker, repeated measures, actually skin, psioarisis, etanercept
+#summary(my_studies[["ERP110816"]]$df %>% 
+#  select(sample_acc, sex, `organism part`, `sampling site`, disease, `clinical history`, treatment,
+#         `clinical information`, `isolate`, `individual`) %>%
+#  mutate(across(everything(), as.factor)))
+
+
+# "GSE112260"
+# actually induced sputum macrophages
+# only 4 controls (rest asthma or COPD)
+#my_studies[["GSE112260"]]$df %>% filter(diagnosis=="control") %>% group_by(`smoking status`) %>% count()
+

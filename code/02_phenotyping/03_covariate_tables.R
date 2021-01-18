@@ -104,7 +104,6 @@ missing_age <- ae_only_meta %>%
   mutate(age_missing=ifelse(is.na(age), "y", "n"))
 
 
-
 missing_age %>% covar_table("age_missing")
 
 

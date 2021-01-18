@@ -10,10 +10,6 @@ study_sl <- read_csv("data/smok_study_sex_lab.csv")
 sample_metadata_filt <- read_csv("../drug_trt/data/sample_metadata_filt.csv",
                                  col_types="cccccdldcc")
 
-fct_summ <- function(df) {summary(df %>% mutate(across(everything(), as.factor)))}
-add_sl <- function(df) {df %>% left_join(sample_metadata_filt %>% filter(label_type=="expression") %>% 
-            select(sample_acc, sex_lab))}
-
 incl_studies <- annot_tab %>% 
   filter(included=="yes" & study_type=="smoking history")
 

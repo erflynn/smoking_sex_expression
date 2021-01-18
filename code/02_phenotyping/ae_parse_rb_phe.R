@@ -417,3 +417,16 @@ ae_df <- bind_rows(list(ae1, ae2, ae3, ae4, ae5, ae6, ae7, ae8, ae9,
 
 
 ae_df %>% write_csv("data/ae_sample_labels.csv")
+
+# TODO - add from this one
+# "GSE40364"  - actually small airway epithelium
+fct_summ(my_studies[["GSE40364" ]]$df) 
+lung_s5 <- my_studies[["GSE40364"]]$df %>% 
+  filter(is.na(`copd status`)) %>% 
+  mutate(`smoking status`=ifelse(`smoking status`=="smoker", "s", `smoking status`)) %>%
+  mutate(smok=toupper(`smoking status`)) %>%
+  add_sl() %>%
+  select(sample_acc, study_acc, smok, sex_lab)
+#group_by(`smoking status`, sex_lab)  %>%
+#count()
+

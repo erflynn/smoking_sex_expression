@@ -39,6 +39,13 @@ res_int <- topTable(fit, coef="smokS:sexmale", number=nrow(ae_only)) %>%
   add_gene_info("affy")
 adj_res_int <- res_int %>% filter(adj.P.Val < 0.01) 
 
+# write out for STAMS?
+tt_int <- data.frame(topTable(fit, coef="smokS:sexmale", number=nrow(ae_only)) )
+tt_int$entrezgene_id <- rownames(tt_int)
+tt_int %>% dplyr::select(entrezgene_id, P.Value) %>% write_csv("data/ae_interaction_pvals.csv")
+res_int %>% dplyr::select(gene, P.Value) %>% write_csv("data/ae_interaction_pvals_hgnc.csv")
+
+
 # plot some of the CI and individual genes
 smok_ci_int <- topTable(fit, coef="smokS:sexmale", number=nrow(ae_only), 
                     confint = TRUE) %>%

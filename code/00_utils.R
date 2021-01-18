@@ -1,6 +1,24 @@
 
 library(tidyverse)
 library(miceadds)
+sl <- read_csv("data/smok_samples_w_sl.csv", col_types="clddccccc")
+
+
+fct_summ <- function(df) {
+  summary(df %>% 
+            mutate(across(everything(), as.factor)))
+}
+add_sl <- function(df) {
+  df %>% left_join(sl %>% 
+                     dplyr::rename(sex_lab=expression) %>% 
+                     select(sample_acc, sex_lab))
+}
+
+# TODO: gene convert should ALSO update adjusted pvals
+# - GENE CONVERT NEEDS TO DEAL W DUPLICATES
+#   select Min?? or meta-analyze?
+# - double check this all works
+#  
 
 # --- code for converting to hgnc --- #
 

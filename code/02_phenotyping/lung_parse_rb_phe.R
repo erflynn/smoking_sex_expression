@@ -88,17 +88,6 @@ lung_s4 <- my_studies[["GSE40791"  ]]$df %>%
 #group_by(gender, smokingstat) %>% 
 #count()
 
-#--> KEEP, sufficient! 
-# "GSE40364"  - actually small airway epithelium
-fct_summ(my_studies[["GSE40364" ]]$df) 
-lung_s5 <- my_studies[["GSE40364"]]$df %>% 
-  filter(is.na(`copd status`)) %>% 
-  mutate(`smoking status`=ifelse(`smoking status`=="smoker", "s", `smoking status`)) %>%
-  mutate(smok=toupper(`smoking status`)) %>%
-  add_sl() %>%
-  select(sample_acc, study_acc, smok, sex_lab)
-#group_by(`smoking status`, sex_lab)  %>%
-#count()
 
 # "GSE31210"  -- ever vs never, but potentially enough!!! 
 #  3 male never, but still is some
