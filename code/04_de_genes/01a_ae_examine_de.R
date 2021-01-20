@@ -18,13 +18,20 @@ ae_only_meta <- comb_metadata3 %>%
  filter(!tissue %in%
           c("bronchial epithelium","alveolar macrophages"))
 ae_only <- eset_comb3[, ae_only_meta$geo_accession] # 539 vs 671
+
+con <- dbConnect(SQLite(), "../GEOmetadb.sqlite")
+dates <- dbGetQuery(con, sprintf("SELECT gsm, submission_date FROM gsm WHERE gsm IN ('%s')", 
+                       paste(ae_only_meta$geo_accession, collapse="','")))
+dbDisconnect(con)
+ae_only_meta2 <- ae_only_meta %>% left_join(dates, by=c("geo_accession"="gsm"))
 save(ae_only, ae_only_meta, file="data/ae_only_eset.RData")
 
 # -- run differential expression analysis -- #
-smok <- factor(ae_only_meta$smok) # smok
-sex <- factor(ae_only_meta$expr_sex) # expr_sex
-design <- model.matrix(~smok+sex+sex*smok) # model
-fit <- lmFit(ae_only, design)
+smok <- factor(ae_only_meta2$smok) # smok
+sex <- factor(ae_only_meta2$expr_sex) # expr_sex
+submission_date <- factor(ae_only_meta2$submission_date)
+design <- model.matrix(~smok+sex+sex*smok+submission_date) # model
+fit <- lmFit(as.matrix(ae_only[,ae_only_meta2$geo_accession]), design)
 fit <- eBayes(fit)
 
 # get the lists of genes for each of the terms:
@@ -34,6 +41,18 @@ res_smok <- topTable(fit, coef="smokS", number=nrow(ae_only)) %>%
   add_gene_info("affy")
 res_sex <- topTable(fit, coef="sexmale", number=nrow(ae_only)) %>% 
   add_gene_info("affy")
+
+full_int <- data.frame(topTable(fit, coef="smokS:sexmale", n=nrow(ae_only)))
+full_int$entrezgene_id <- rownames(full_int)
+full_int2 <- full_int %>% 
+  left_join(convert_genes %>% mutate(entrezgene_id=as.character(entrezgene_id))) 
+full_int2 %>%
+  filter(hgnc_symbol %in% (comb_ma_dat_d %>% filter(adj.p < 0.05) %>% pull(gene))) %>%
+  dplyr::select(logFC, P.Value, adj.P.Val, hgnc_symbol)
+full_int2 %>%
+  dplyr::select(logFC, P.Value, adj.P.Val, hgnc_symbol) %>%
+  head(10)
+
 
 res_int <- topTable(fit, coef="smokS:sexmale", number=nrow(ae_only)) %>% 
   add_gene_info("affy")

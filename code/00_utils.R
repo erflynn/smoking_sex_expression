@@ -79,3 +79,59 @@ add_gene_info <- function(df, dataset="affy"){
 }
 
 
+# GPL570 PROBE TO GENE
+library(hgu133plus2.db)
+x <- hgu133plus2SYMBOL
+mapped_probes <- mappedkeys(x)
+xx <- as.list(x[mapped_probes])
+
+probe_gene <- tibble(
+  "probes"=names(xx),
+  "gene" = unlist(xx)
+)
+save(probe_gene, file="ref/probe_gene.RData")
+# TODO save this object, slow
+
+
+convertToGenes <- function(expData, key.df, gene.list){
+  # TODO
+  #  optimize, this is slow!! <-- possibly switch to MetaIntegrator function
+  #  make sure the object contains expression data, keys
+  #  change so that this is INPUT expr matrix + key mapping
+  #  should work with both GEOQuery -AND- MetaIntegrator Objects
+  
+  list.keys <- key.df[key.df$gene %in% gene.list,]
+  
+  gene.to.probe <- split(key.df$probes,  key.df$gene) # this is slow... mb store for each platform
+  expData2 <- do.call(cbind, lapply(1:length(gene.to.probe), function(x) {
+    # get the gene and the probe
+    g <- names(gene.to.probe)[x]
+    p <- unlist(gene.to.probe[g])
+    if (length(p)>1){
+      expD <- expData[p,]
+      df <- (data.frame(colMeans(expD, na.rm=TRUE)))
+      return(df)
+    }
+    else {
+      df <- data.frame(expData[p,])
+      return(df)
+    }})) ### ALSO SLOW...
+  
+  colnames(expData2) <- names(gene.to.probe)
+  expData2.2 <- data.frame(t(expData2)) # columns are samples, rows are genes
+  
+  # create a data fram of NAs for missing genes
+  missing.genes <- setdiff(gene.list, list.keys)
+  missing.vec <- rep(NA, ncol(expData2.2))
+  missing.df <- do.call(rbind, lapply(1:length(missing.genes), function(x) missing.vec))
+  rownames(missing.df) <- missing.genes
+  colnames(missing.df) <- colnames(expData2.2)
+  
+  # put together and reorder
+  expDataPlusMiss <- rbind(expData2.2, missing.df )
+  expData2.3 <- expDataPlusMiss[gene.list,] # REORDER so it matches other data
+  
+  return(expData2.3)
+}
+
+

@@ -1,13 +1,18 @@
 
 library(STAMS)
 library(tidyverse)
-load("data/norm_res.RData")
+#load("data/norm_res.RData")
+load("data/stams_run4/norm_res.RData")
 normalized_results$ordered.module.score.matrix %>% filter(p==0) %>% nrow() # 422/12817
+# 6943/13779
 
-ae_p <- read_csv("data/ae_interaction_pvals_hgnc.csv")
-ae_p2 <- ae_p$P.Value
-names(ae_p2) <- ae_p$gene
-chosen=moduleChoose(normalized_results, top=0.01, plot=FALSE) 
+load("data/gene_mapped_ritux.RData")
+ae_p2 <- gene_mapped$Pvalue
+names(ae_p2) <- gene_mapped$Gene
+#ae_p <- read_csv("data/ae_interaction_pvals_hgnc.csv")
+#ae_p2 <- ae_p$P.Value
+#names(ae_p2) <- ae_p$gene
+chosen=moduleChoose(normalized_results, top=0.01, plot=FALSE) # --> 138
 string_db_instance <- STRINGdb$new()#version="9_1")
 #string_db_instance$plot_network(chosen$modules[[1]]) # does not work
 
@@ -31,7 +36,7 @@ plot_module <- function(my_module){
   my_mat <- as.matrix(chosen$subnetwork[my_module ,my_module ])
   prot_df <- string_db_instance$add_proteins_description(
     data.frame("STRING_id"=my_module) )
-  prot_df %>% select(STRING_id, preferred_name)
+  prot_df %>% dplyr::select(STRING_id, preferred_name)
   rownames(my_mat) <- prot_df$preferred_name
   colnames(my_mat) <- prot_df$preferred_name
   g <- graph_from_adjacency_matrix(my_mat, weighted=T, mode="upper", add.rownames="code")
