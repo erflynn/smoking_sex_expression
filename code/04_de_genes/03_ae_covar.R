@@ -14,6 +14,7 @@
 
 library(tidyverse)
 library(limma)
+source("code/00_utils.R")
 load("data/ae_only_eset.RData") # ae_only, ae_only_meta
 
 # filter for complete-cases
@@ -112,23 +113,7 @@ pcs2$sample_acc <- rownames(pcs2)
 pcs2.2 <- pcs2 %>% left_join(ae_input_meta, by=c("sample_acc"="geo_accession"))
 
 
-plotPC3 <- function(df, my_col){
-  df2 <- df %>%
-    mutate(PC2_copy=PC2) %>%
-    pivot_longer(c(PC1,PC2), names_to="PCA", values_to="value1") %>%
-    dplyr::rename(PC2=PC2_copy) %>%
-    pivot_longer(c(PC2,PC3), names_to="PCB", values_to="value2") %>%
-    filter(PCA!=PCB) %>%
-    unite(PC_pair, c(PCA, PCB), sep=" vs ")
-  
-  ggplot(df2, 
-         aes(x=value1, y=value2, col={{my_col}}))+
-    geom_point(alpha=0.5)+
-    theme_bw()+
-    ylab("")+
-    xlab("")+
-    facet_wrap(.~PC_pair, nrow=3, scales="free")
-}
+
 
 # --- tissue --- #
 # tracheal epithelium looks different

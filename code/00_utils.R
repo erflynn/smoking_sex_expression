@@ -1,24 +1,73 @@
 
 library(tidyverse)
 library(miceadds)
-sl <- read_csv("data/smok_samples_w_sl.csv", col_types="clddccccc")
 
+
+# ---- general summary  ---- #
 
 fct_summ <- function(df) {
   summary(df %>% 
             mutate(across(everything(), as.factor)))
 }
+
+sl <- read_csv("data/smok_samples_w_sl.csv", col_types="clddccccc")
 add_sl <- function(df) {
   df %>% left_join(sl %>% 
                      dplyr::rename(sex_lab=expression) %>% 
                      select(sample_acc, sex_lab))
 }
 
-# TODO: gene convert should ALSO update adjusted pvals
-# - GENE CONVERT NEEDS TO DEAL W DUPLICATES
-#   select Min?? or meta-analyze?
-# - double check this all works
-#  
+# --- code for DE viz --- #
+
+# plot chromosome distribution
+plotChrDist <- function(df,  pcut=0.01){
+  df %>% filter(adj.P.Val < pcut & 
+                  chromosome_name %in% c(1:22, "X", "Y")) %>%
+    mutate(chromosome_name=factor(chromosome_name, 
+                                  levels= c(1:22, "X", "Y"))) %>%
+    ggplot(aes(x=chromosome_name))+
+    geom_histogram(stat="count")+
+    theme_bw()+
+    ylab("number of genes")
+}
+
+# volcano plot
+# TODO - fix if missing category
+volcano_plot_de <- function(df, pcut=0.01, num_display=20){
+  # labels the top "num_display" genes
+  df2 <- df %>% 
+    mutate(gene_grp=case_when(
+      adj.P.Val > pcut ~ "not sig",
+      logFC < 0 ~ "down",
+      logFC > 0 ~ "up")) %>%
+    mutate(gene_grp=factor(gene_grp, levels=c("down", "up", "not sig")))
+  ggplot(df2, aes(x=logFC, y=-log10(adj.P.Val)))+
+    geom_point(aes(col=gene_grp), alpha=0.5)+
+    geom_label_repel(data=df2 %>% head(num_display), 
+                     aes(label=gene), size=3)+
+    scale_color_manual(values=c("red", "blue", "gray"))+
+    theme_bw()
+}
+
+# --- code for visualizing PCs --- #
+plotPC3 <- function(df, my_col){
+  df2 <- df %>%
+    mutate(PC2_copy=PC2) %>%
+    pivot_longer(c(PC1,PC2), names_to="PCA", values_to="value1") %>%
+    dplyr::rename(PC2=PC2_copy) %>%
+    pivot_longer(c(PC2,PC3), names_to="PCB", values_to="value2") %>%
+    filter(PCA!=PCB) %>%
+    unite(PC_pair, c(PCA, PCB), sep=" vs ")
+  
+  ggplot(df2, 
+         aes(x=value1, y=value2, col={{my_col}}))+
+    geom_point(alpha=0.5)+
+    theme_bw()+
+    ylab("")+
+    xlab("")+
+    facet_wrap(.~PC_pair, nrow=3, scales="free")
+}
+
 
 # --- code for converting to hgnc --- #
 
@@ -80,58 +129,24 @@ add_gene_info <- function(df, dataset="affy"){
 
 
 # GPL570 PROBE TO GENE
-library(hgu133plus2.db)
-x <- hgu133plus2SYMBOL
-mapped_probes <- mappedkeys(x)
-xx <- as.list(x[mapped_probes])
+add_gene <- function(df){
+  if (file.exists("ref/probe_gene.RData")){
+    df <- data.frame(df)
+    df$probes <- rownames(df)
+    left_join(df, probe_gene, by="probes")
+  } else {
+    library(hgu133plus2.db)
+    x <- hgu133plus2SYMBOL
+    mapped_probes <- mappedkeys(x)
+    xx <- as.list(x[mapped_probes])
+    probe_gene <- tibble(
+      "probes"=names(xx),
+      "gene" = unlist(xx)
+    )
+    save(probe_gene, file="ref/probe_gene.RData")
+  }
 
-probe_gene <- tibble(
-  "probes"=names(xx),
-  "gene" = unlist(xx)
-)
-save(probe_gene, file="ref/probe_gene.RData")
-# TODO save this object, slow
-
-
-convertToGenes <- function(expData, key.df, gene.list){
-  # TODO
-  #  optimize, this is slow!! <-- possibly switch to MetaIntegrator function
-  #  make sure the object contains expression data, keys
-  #  change so that this is INPUT expr matrix + key mapping
-  #  should work with both GEOQuery -AND- MetaIntegrator Objects
-  
-  list.keys <- key.df[key.df$gene %in% gene.list,]
-  
-  gene.to.probe <- split(key.df$probes,  key.df$gene) # this is slow... mb store for each platform
-  expData2 <- do.call(cbind, lapply(1:length(gene.to.probe), function(x) {
-    # get the gene and the probe
-    g <- names(gene.to.probe)[x]
-    p <- unlist(gene.to.probe[g])
-    if (length(p)>1){
-      expD <- expData[p,]
-      df <- (data.frame(colMeans(expD, na.rm=TRUE)))
-      return(df)
-    }
-    else {
-      df <- data.frame(expData[p,])
-      return(df)
-    }})) ### ALSO SLOW...
-  
-  colnames(expData2) <- names(gene.to.probe)
-  expData2.2 <- data.frame(t(expData2)) # columns are samples, rows are genes
-  
-  # create a data fram of NAs for missing genes
-  missing.genes <- setdiff(gene.list, list.keys)
-  missing.vec <- rep(NA, ncol(expData2.2))
-  missing.df <- do.call(rbind, lapply(1:length(missing.genes), function(x) missing.vec))
-  rownames(missing.df) <- missing.genes
-  colnames(missing.df) <- colnames(expData2.2)
-  
-  # put together and reorder
-  expDataPlusMiss <- rbind(expData2.2, missing.df )
-  expData2.3 <- expDataPlusMiss[gene.list,] # REORDER so it matches other data
-  
-  return(expData2.3)
 }
+
 
 

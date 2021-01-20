@@ -1,12 +1,15 @@
 
-# -- drug
-# GSE36868 - simvastatin on LCLs
-# GSE31312, GSE10846 - rituximab
-# GSE100833 - Ustekinumab
-library(tidyverse)
-library(GEOquery)
-library(limma)
-library(bigpca)
+library('tidyverse')
+library('GEOquery')
+library('limma')
+library('bigpca')
+library('jetset')
+library('vroom')
+
+
+source("code/00_utils.R")
+
+# ----- GSE36868 - simvastatin on LCLs ----- #
 
 gse36868 <- getGEO("GSE36868")
 pData(gse36868[[1]]) %>% fct_summ()
@@ -68,8 +71,8 @@ fit <- eBayes(fit)
 topTable(fit, coef="sexMale:trt1")
 topTable(fit, coef="sexMale") # there should be some stuff here??
 
-
-
+# ----- GSE10846 - rituximab ----- #
+# (GSE31312 is also rituximab)
 gse10846 <- getGEO("GSE10846")
 pData(gse10846[[1]]) %>% fct_summ()
 pDat2 <- pData(gse10846[[1]]) %>%
@@ -136,28 +139,9 @@ test_numeric(pDat2.1, `Number of extranodal sites`)
 test_categorical(pDat2.1, `Follow up status`)
 test_categorical(pDat2.1, `Final microarray diagnosis`)
 test_categorical(pDat2.1, Chemotherapy)
-#test_categorical(pDat2.1, Stage) # todo ordinal test
+#test_categorical(pDat2.1, Stage) # TODO - ordinal test
 
-
-library(hgu133plus2.db)
-x <- hgu133plus2ENTREZID
-mapped_probes <- mappedkeys(x)
-xx <- as.list(x[mapped_probes])
-
-probe_gene <- tibble(
-  "probes"=names(xx),
-  "gene" = unlist(xx)
-)
-# TODO save this object, slow
-
-add_gene <- function(df){
-  df <- data.frame(df)
-  df$probes <- rownames(df)
-  left_join(df, probe_gene, by="probes")
-}
-
-
-
+# TODO - try from RAW data
 boxplot(eDat2[,1:10]) # do we need to log transform? looks normalized but maybe overly so
 fit <- lmFit(eDat2, design)
 fit <- eBayes(fit)
@@ -168,53 +152,37 @@ topTable(fit, coef="Gendermale:ChemotherapyR-CHOP-Like Regimen", n=nrow(eDat2)) 
 tt_sex = topTable(fit, coef="Gendermale",  n=nrow(eDat2))   %>% 
   filter(adj.P.Val < 0.05) %>% add_gene()
 
-library('jetset')
+
+# map to genes and then to STRING for STAMS
+# TODO - check this is correct mapping?
 load("data/affy_entrez_to_hgnc.RData")
 res <- jmap("hgu133plus2", eg=unique(probe_gene$gene))
 gene_to_probe = tibble("entrezgene_id"=names(res), "probe"=unlist(res)) %>%
   left_join(convert_genes %>%mutate(entrezgene_id=as.character(entrezgene_id)) %>%
               filter(chromosome_name %in% c(1:22, "X", "Y")))
-# GPL570, add column data!
 df_int <- data.frame(tt_int)
 df_int$probe <- rownames(df_int)
 df_int2 <- df_int %>% left_join(gene_to_probe, by="probe")
 df_int3 <- df_int2 %>% filter(!is.na(hgnc_symbol) & hgnc_symbol!="")
 length(unique(df_int3$probe))
 df_int3$adjP <- p.adjust(df_int3$P.Value, method="fdr")
-head(df_int3)
-df_int3 %>% dplyr::select(logFC, P.Value, adj.P.Val, hgnc_symbol, chromosome_name) %>% head(10)
-
-df_int3 %>% dplyr::select(hgnc_symbol, P.Value) 
 string_db <- STRINGdb$new() 
-gene_values <- df_int3 %>% dplyr::rename(Pvalue=P.Value, Gene=hgnc_symbol) %>%
+gene_values <- df_int3 %>% 
+  dplyr::rename(Pvalue=P.Value, Gene=hgnc_symbol) %>%
   filter(!duplicated(Gene))
 
-# get rid of pvalue = 0 lines and replace with upper bound 
-#gene_values$Pvalue=pmax(gene_values$Pvalue, 1/gene_values$nSims)
-# skip this - nSims is from VEGAS
-
-# remove pvalue = 1 - there are none here? 
-#print("warning, removing genes with a pvalue = 1") 
-print(length(which(gene_values$Pvalue ==1))) 
-
+# TODO - check STAMS mapping
 gene_values2=gene_values %>% 
   filter(Pvalue != 1) %>% 
-  filter(!is.na(Gene)) #%>%
-#group_by(Gene) %>%
-#mutate(Pvalue=min(Pvalue)) %>%
-#ungroup()
-stopifnot(length(unique(gene_values$Gene))==nrow(gene_values))
-#STRINGdb$help("map") # -- to get info about STRING functions
+  filter(!is.na(Gene)) 
 gene_mapped = string_db$map(data.frame(gene_values2), "Gene", removeUnmappedRows = TRUE )
 save(gene_mapped, file="data/gene_mapped_ritux.RData")
-# should we meta-analyze probes to genes?
 
 
 
 #gse100833 <- getGEO("GSE100833")
 
-# -- smoking
-# E-TABM-305
+# ---- smoking E-TABM-305 ---- #
 etabm305_phe <- read_tsv("data/etabm305/E-TABM-305.sdrf.txt")
 fct_phe <- etabm305_phe  %>% mutate(across(everything(), as.factor))
 fct_l <- sapply(colnames(etabm305_phe), function(x) length(levels(fct_phe[[x]])))
@@ -227,10 +195,6 @@ colnames(etabm305_phe2) <- str_replace_all(colnames(etabm305_phe2), "Characteris
 colnames(etabm305_phe2) <- str_replace_all(colnames(etabm305_phe2), "Factor Value \\[", "f_") 
 colnames(etabm305_phe2) <- str_replace_all(colnames(etabm305_phe2), "\\[|\\]", "")
 colnames(etabm305_phe2) <-tolower(str_replace_all(colnames(etabm305_phe2), " ", "_"))
-# none
-etabm305_phe2 %>% filter(f_age!=c_age | f_sex!=c_sex | 
-                           term_accession_number_4!= term_accession_number_1 |
-                           scan_name !=hybridization_name)
 
 etabm305_phe2 %>% dplyr::select(-f_age, -f_sex, -contains("term_accession"), -hybridization_name)
 etabm305_phe3 <- etabm305_phe2 %>% 
@@ -240,7 +204,6 @@ etabm305_phe3 <- etabm305_phe2 %>%
   dplyr::rename(hdl=value, age=f_age, sex=c_sex, individual=f_individual, smoking=c_clinicalinformation) %>%
   dplyr::select(-test)
 
-library('vroom')
 etabm305_expr <- vroom("data/etabm305/E-TABM-305-processed-data-1770937661.txt")
 colnames(etabm305_expr) <- str_replace_all(colnames(etabm305_expr), "Hybridization_individual ", "")
 etabm305_expr <- etabm305_expr[-1,]
@@ -275,11 +238,12 @@ b_tt2 <- b_tt %>% left_join(map_to_gene, by="probe")
 b_tt2 %>% filter(gene %in% c("ACAS2", "ACE")) %>% arrange(gene)
 # TODO: use beadarray to look at!
 
-
+# TODO"
 # E-MTAB-6559 - tobacco heating system
 # GSE71220 - statins + COPD + smoking
 
-# -- lung
+# -- ---- lung data ----- #
+# missing smoking informating :/ 
 # GSE23546  - super series
 # GSE23352 , GSE23545, GSE23529
 lung_studies <- getGEO("GSE23546")
