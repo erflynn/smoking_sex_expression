@@ -1,6 +1,7 @@
 
 library(tidyverse)
 library(miceadds)
+library(meta)
 
 
 # ---- general summary  ---- #
@@ -49,6 +50,55 @@ volcano_plot_de <- function(df, pcut=0.01, num_display=20){
     theme_bw()
 }
 
+# --- summarize probes to genes --- #
+# TODO - rename ID, geneSymbol
+prep_data_ma <- function(df){
+  df2 <- df %>%
+    mutate(SD=(logFC-CI.L)/1.96) %>% # SE for effect size - we have 95%  CI = 1.96*SD
+    dplyr::select(ID, geneSymbol, chromosome, logFC, SD, P.Value) %>%
+    filter(geneSymbol!="") %>%
+    group_by(chromosome,geneSymbol) %>%
+    mutate(n=n()) 
+  return(df2)
+}
+
+ma_probes_genes <- function(df){
+  ma <- metagen(df %>% pull(logFC),
+                df %>% pull(SD),
+                studlab=df %>% pull(ID),
+                comb.fixed = TRUE,
+                comb.random = FALSE,
+                method.tau = "DL",
+                hakn = FALSE,
+                prediction = FALSE,
+                sm = "SMD")
+  return(list("chromosome"=unique(unlist(df$chromosome)),
+              "gene"=unique(df$geneSymbol),
+              "logFC"=ma$TE.fixed,
+              "logFC.l"=ma$lower.fixed,
+              "logFC.u"=ma$upper.fixed,
+              "p"=ma$pval.fixed))
+  
+}
+# TODO update src to n
+run_clean_ma <- function(df){
+  df2 <- prep_data_ma(df)
+  multi_probe_gene <- df2 %>% filter(n>1) %>% group_split(geneSymbol)
+  ma_vals <- lapply(multi_probe_gene, ma_probes_genes)
+  mult_gene_df <- data.frame(apply(do.call(rbind, ma_vals) , c(1,2), unlist)) %>%
+    mutate(across(c(contains("logFC"), p), ~as.numeric(as.character(.)) ))
+  comb_ma_dat <- df2 %>% filter(n==1) %>% 
+    dplyr::rename(gene=geneSymbol, p=P.Value) %>%
+    mutate(logFC.l=logFC-1.96*SD,
+           logFC.u=logFC+1.96*SD) %>%
+    dplyr::select(colnames(mult_gene_df)) %>%
+    mutate(src="single") %>%
+    bind_rows(mult_gene_df %>% mutate(src="mult")) %>% 
+    arrange(p)
+  comb_ma_dat$adj.p <- p.adjust(comb_ma_dat$p, method="fdr")
+  return(comb_ma_dat)
+}
+
 # --- code for visualizing PCs --- #
 plotPC3 <- function(df, my_col){
   df2 <- df %>%
@@ -88,6 +138,7 @@ load_genes <- function(list_genes, my_f, id_type){
   return(convert_genes)
 }
 
+  
 load_gene_convert <- function(dataset, list_genes){
   stopifnot(dataset %in% c("affy", "rb", "tcga"))
   if (dataset=="affy"){

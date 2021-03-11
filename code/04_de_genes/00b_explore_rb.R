@@ -117,6 +117,8 @@ ggsave("figures/blood_pcs_study.pdf")
 
 # ---- Lung --- #
 
+
+
 lung_kept3 <- lung_kept %>% filter(sample_acc %in% colnames(compendia_expr4))
 lung_expr <- compendia_expr4[,lung_kept3$sample_acc]
 lung_kept3 %>% left_join(meta_sex)
