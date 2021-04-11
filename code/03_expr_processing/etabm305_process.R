@@ -1,5 +1,9 @@
 
-# TODO - add in control data?
+# TODO:
+# - add in control probes?
+# - try vst
+
+
 # Charlesworth pre-processing:
 # 0. chi-square test to identify significantly expressed transcripts (20k)
 # 1. the score within individuals using decile percentage bins grouped by average log transform signal across individuals

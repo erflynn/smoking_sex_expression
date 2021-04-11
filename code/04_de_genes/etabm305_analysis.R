@@ -1,12 +1,10 @@
-# Code for looking at large smoking-related studies
+# Code for performing differential expression analysis
+# prior to running picture to run the meta, load, and process files
 #
 # Datasets:
 # - E-TABM-305 (Illumina, n=1240), Charlesworth et al., lymphocytes
 
-# smaller?
-# - GSE20686 (n=209, Agilent), Beineke et al., whole blood
-# - E-TABM-5278 (Affy), Martin et al., whole blood
-# - possible: GSE33828, GSE48152, E-MTAB-1708, GSE48348, GSE36382
+
 
 # To do: 
 # Charlesworth identified many more DE genes in smokers (greater than 300), while we're getting about 60 
@@ -21,7 +19,10 @@ library('limma')
 library('bigpca')
 library('STRINGdb')
 
+
 # --- 0. view in PC space --- #
+load("data/blood/blood_proc.RData")
+pDat2 <- pData(filt_ds)
 start_time = Sys.time(); 
 blood_bp1 <- big.PCA(exprs(filt_ds), pcs.to.keep=3); 
 end_time=Sys.time()
@@ -168,7 +169,8 @@ design <- model.matrix(~ sex + smoking + smoking*sex + age, data=pDat2)
 fit <- lmFit(exp_d2, design)
 fit <- eBayes(fit)
 fit$genes <- data.frame(ID= probeList, geneSymbol=gene_metadata_sort$gene, 
-                        chromosome=gene_metadata_sort$chromosome_name, stringsAsFactors=FALSE)
+                        chromosome=gene_metadata_sort$chromosome_name, 
+                        stringsAsFactors=FALSE)
 
 df_smok <- data.frame(topTable(fit, coef="smokingsmoker",  number=nrow(fit))) %>% 
   rename(gene=geneSymbol) 
@@ -240,6 +242,54 @@ df_exp %>%
   theme_bw()+
   ylab("")+
   xlab("")
+
+df_exp %>%
+  ggplot(aes(y=expr, x=smoking))+
+  geom_boxplot()+
+  facet_wrap(~gene, scales="free")+
+  theme_bw()+
+  ylab("")+
+  xlab("")
+
+smok_ci_int_p %>% filter(geneSymbol=="SLC1A5")
+
+
+design <- model.matrix(~ smoking, data=pDat2) 
+fit <- lmFit(exp_d2, design)
+fit <- eBayes(fit)
+fit$gene <- data.frame(ID= probeList, geneSymbol=gene_metadata_sort$gene, 
+                        chromosome=gene_metadata_sort$chromosome_name, stringsAsFactors=FALSE)
+
+df_smok <- data.frame(topTable(fit, coef="smokingsmoker",  number=nrow(fit), confint=T)) %>% 
+  rename(gene=geneSymbol)  
+df_smok %>% filter(adj.P.Val < 0.05) %>% nrow() 
+df_smok %>% filter(gene=="SLC1A5")
+df_exp %>% 
+  filter(gene=="SLC1A5") %>%
+  group_by(smoking, sex) %>%
+  summarize(mean_expr=mean(expr), sd_expr=sd(expr))
+# mean_f(s-ns) -0.15, mean_m(s-ns): 0.06
+# diff means: -0.15-0.06=0.21
+df_exp %>% 
+  filter(gene=="PFAS") %>%
+  group_by(smoking, sex) %>%
+  summarize(mean_expr=mean(expr), sd_expr=sd(expr))
+smok_ci_int_p %>% filter(geneSymbol=="PFAS")
+
+# mean_f(s-ns) 0.07, mean_m(s-ns): -0.06
+# diff means: 0.07--0.06=0.13
+
+df_exp %>% 
+  filter(gene=="OLR1") %>%
+  group_by(smoking, sex) %>%
+  summarize(mean_expr=mean(expr), sd_expr=sd(expr))
+smok_ci_int_p %>% filter(geneSymbol=="OLR1")
+#(4.95-5.09)-(5.22-4.97)
+#-0.14-0.25=0.39
+
+
+# DATA is *already* log-transformed
+sd(exp_long$expr)
 
 #  ---- 7. prepare data for STAMS ---- #
 # TODO - check STAMS mapping - though everything mapped?

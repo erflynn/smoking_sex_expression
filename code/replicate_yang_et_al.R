@@ -86,12 +86,12 @@ con <- dbConnect(SQLite(), "../GEOmetadb.sqlite")
 download_info = dbGetQuery(con, sprintf("SELECT gsm, gpl, submission_date, supplementary_file FROM gsm WHERE gsm IN ('%s')", 
                         paste(gsm2.3$gsm, collapse="','")))
 dbDisconnect(con)
-download_info2 <- download_info %>% s
-eparate_rows(supplementary_file, sep=";\t") %>%
+download_info2 <- download_info %>% 
+  separate_rows(supplementary_file, sep=";\t") %>%
   filter(str_detect(supplementary_file, "CEL"))
 gsm2.4 <- gsm2.3 %>% left_join(download_info %>% 
                                  dplyr::select(gsm, submission_date))
-
+gsm2.4 %>% write_csv("data/ae_phe_data.csv")
 download_info2 %>% write_csv("data/list_ae_to_download_replication.csv")
 
 

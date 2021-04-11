@@ -1,4 +1,12 @@
-#Code for letting ETABM305
+# Code for loading ETABM305
+# 
+# - ran after downloading
+# for i in {1..13};
+# do
+# wget ftp://ftp.ebi.ac.uk/pub/databases/microarray/data/experiment/TABM/E-TABM-305/E-TABM-305.raw.${i}.zip;
+# done
+
+
 
 library('lumi')
 library('tidyverse')

@@ -63,15 +63,16 @@ prep_data_ma <- function(df){
 }
 
 ma_probes_genes <- function(df){
-  ma <- metagen(df %>% pull(logFC),
-                df %>% pull(SD),
+  # generic inverse variance methods
+  ma <- metagen(df %>% pull(logFC), # treatment estimate
+                df %>% pull(SD), # standard error
                 studlab=df %>% pull(ID),
                 comb.fixed = TRUE,
                 comb.random = FALSE,
-                method.tau = "DL",
+                method.tau = "DL", # method for between study variance
                 hakn = FALSE,
                 prediction = FALSE,
-                sm = "SMD")
+                sm = "MD") # underlying summary measure (RR, OR, ASD, ROM, HR, MD)
   return(list("chromosome"=unique(unlist(df$chromosome)),
               "gene"=unique(df$geneSymbol),
               "logFC"=ma$TE.fixed,
@@ -139,7 +140,7 @@ load_genes <- function(list_genes, my_f, id_type){
 }
 
   
-load_gene_convert <- function(dataset, list_genes){
+load_gene_convert <- function(list_genes, dataset){
   stopifnot(dataset %in% c("affy", "rb", "tcga"))
   if (dataset=="affy"){
     my_f <-"data/affy_entrez_to_hgnc.RData"
@@ -184,7 +185,8 @@ add_gene <- function(df){
   if (file.exists("ref/probe_gene.RData")){
     df <- data.frame(df)
     df$probes <- rownames(df)
-    left_join(df, probe_gene, by="probes")
+    load("ref/probe_gene.RData")
+    
   } else {
     library(hgu133plus2.db)
     x <- hgu133plus2SYMBOL
@@ -196,8 +198,49 @@ add_gene <- function(df){
     )
     save(probe_gene, file="ref/probe_gene.RData")
   }
+  return(left_join(df, probe_gene, by="probes"))
+}
 
+probe_gene_entrez <- function(df){
+  if (file.exists("ref/probe_gene_entrez.RData")){
+    df <- data.frame(df)
+    df$probes <- rownames(df)
+    load("ref/probe_gene_entrez.RData")
+    
+  } else {
+    library(hgu133plus2.db)
+    x <- hgu133plus2ENTREZID
+    mapped_probes <- mappedkeys(x)
+    xx <- as.list(x[mapped_probes])
+    probe_gene <- tibble(
+      "probes"=names(xx),
+      "gene" = unlist(xx)
+    )
+    save(probe_gene, file="ref/probe_gene_entrez.RData")
+  }
+  return(left_join(df, probe_gene, by="probes"))
 }
 
 
+## ----- code for mapping to STAMS ----- ##
+map_to_stams <- function(df, fname){
+  library(STRINGdb)
+  string_db <- STRINGdb$new() 
+  gene_values <- df %>% 
+    dplyr::rename(Pvalue=p, Gene=gene) 
+  gene_values2=gene_values %>% 
+    filter(Pvalue != 1) %>% 
+    filter(!is.na(Gene)) 
+  gene_mapped = string_db$map(data.frame(gene_values2), "Gene", 
+                              removeUnmappedRows = TRUE )
+  plot(density(gene_mapped$Pvalue))
+  # plot p dist
+  min_p = 0
+  if (any(gene_mapped$Pvalue==0)){
+    min_p <- min(gene_mapped %>% filter(Pvalue!=0) %>% pull(Pvalue))
+  } 
+  gene_mapped2 <- gene_mapped %>% mutate(ifelse(Pvalue==0, min_p, Pvalue))
+  save(gene_mapped2, file=fname)
+  return(gene_mapped2)
+}
 

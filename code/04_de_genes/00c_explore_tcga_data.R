@@ -141,7 +141,7 @@ pDat3 <- pDat2 %>% filter(smok %in% c("never", "former"))
 smok <- factor(pDat3$smok) # smok
 sex <- factor(pDat3$sex) # expr_sex
 design_t <- model.matrix(~smok+sex+sex*smok) # model
-colnames(expr_mat) <- pheno_dat$barcode
+colnames(exppr_mat) <- pheno_dat$barcode
 v <- voom(as.matrix(expr_mat[,pDat3$barcode]), design=design_t, plot=TRUE) #, normalize="quantile"
 fit_t <- lmFit(v, design_t)
 fit_t <- eBayes(fit_t)

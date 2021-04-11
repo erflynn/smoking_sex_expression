@@ -1,5 +1,12 @@
 # code for plotting STAMS output
 #  uses the normalized result file + mapped gene pvals
+
+# normalized_scores2.txt
+# gene, Sm, Sn, p
+#  module score Sm
+#  Sn norm score: (Sm-mu_perm)/sd_perm (100,000k scores)
+#  p - empirical p = frac of permuted that exceed the observed score
+
 library(STAMS)
 library(tidyverse)
 

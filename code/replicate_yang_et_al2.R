@@ -11,7 +11,6 @@ library('ggrepel')
 library('bigpca')
 library('limma')
 library('meta')
-library('metafor')
 source("code/00_utils.R")
 
 # ---> download server side
@@ -42,6 +41,7 @@ rownames(pDat2) <- rownames(pDat)[!dups]
 colnames(pDat2) <- "sample"
 pDat2$gsm <- str_replace_all(rownames(pDat2), ".CEL.gz", "")
 colnames(expDat2) <- str_replace_all(colnames(expDat2), ".CEL.gz", "")
+gsm2.4 <- read_csv("data/ae_phe_data.csv")
 pDat3 <- pDat2 %>% left_join(gsm2.4)
 rownames(pDat3) <- pDat3$gsm
 
@@ -173,17 +173,19 @@ rownames(pDat5) <- pDat5$gsm
 t.test(pDat5 %>% filter(sex=="f", smoking=="S") %>% pull(pack_years),
        pDat5 %>% filter(sex=="m", smoking=="S") %>% pull(pack_years))
 
-
+save(expDat3, pDat5, file="data/ae_filtered_pheno.RData")
 # --- 2. run models --- #
 
+
 # original model
-design_p <- model.matrix(~sex + smoking + sex:smoking + age + pack_years + race_ethnicity,data=pDat5)
+design_p <- model.matrix(~sex + smoking + sex:smoking + age + pack_years + 
+                           race_ethnicity,data=pDat5)
 head(expDat2[,1:5])
 fit_p <- lmFit(expDat3[,pDat5$gsm], design_p)
 fit_p <- eBayes(fit_p)
 colnames(fit_p$coefficients)
 add_gene_ids <- function(df){
-  convert_genes <- load_gene_convert(df, "affy")
+  convert_genes <- load_gene_convert(df$probes, "affy")
   df  %>% add_gene() %>% 
     left_join(convert_genes %>% 
                 mutate(entrezgene_id=as.character(entrezgene_id)), by=c("gene"="entrezgene_id"))
@@ -222,6 +224,8 @@ colnames(fit_d$coefficients)
 tt_int_d <- topTable(fit_d, coef="sexm:smokingS", n=nrow(expDat2))  %>%  add_gene_ids()
 tt_sex_d <- topTable(fit_d, coef="sexm", n=nrow(expDat2))  %>%  add_gene_ids()
 tt_smok_d <- topTable(fit_d, coef="smokingS", n=nrow(expDat2))  %>%  add_gene_ids()
+
+
 
 volcano_plot_de(tt_int_d %>% plot_w_p(), pcut=0.01)+
   ylab("-log10 P value")
@@ -306,6 +310,20 @@ smok_ci_int_d <- topTable(fit_d, coef="sexm:smokingS", number=nrow(expDat3),
                           confint = TRUE)
 smok_ci_int_d <- data.frame(smok_ci_int_d)
 smok_ci_int_d$probes <- rownames(smok_ci_int_d)
+
+
+smok_ci_sex_d <- topTable(fit_d, coef="sexm", number=nrow(expDat3), 
+                          confint = TRUE)
+smok_ci_sex_d <- data.frame(smok_ci_sex_d)
+smok_ci_sex_d$probes <- rownames(smok_ci_sex_d)
+
+
+smok_ci_smok_d <- topTable(fit_d, coef="smokingS", number=nrow(expDat3), 
+                          confint = TRUE)
+smok_ci_smok_d <- data.frame(smok_ci_smok_d)
+smok_ci_smok_d$probes <- rownames(smok_ci_smok_d)
+
+
 both_ci_int <- smok_ci_int_p %>% inner_join(smok_ci_int_d, by="probes") %>%  
   dplyr::select(-probe) %>%
   left_join(probe_gene, by="probes") %>% 
@@ -412,72 +430,96 @@ df2 %>% distinct() %>% arrange(p) %>% filter(p<0.05/1423)
 
 # --- 5. probes to genes --- #
 
-# run meta-analysis to convert probes to genes
-ma_probes_genes <- function(df){
-  ma <- metagen(df %>% pull(logFC),
-                df %>% pull(SD),
-                studlab=df %>% pull(probes),
-                comb.fixed = TRUE,
-                comb.random = FALSE,
-                method.tau = "DL",
-                hakn = FALSE,
-                prediction = FALSE,
-                sm = "SMD")
-  return(list("gene"=unique(df$hgnc_symbol),
-              "logFC"=ma$TE.fixed,
-              "logFC.l"=ma$lower.fixed,
-              "logFC.u"=ma$upper.fixed,
-              "p"=ma$pval.fixed))
-  
-}
 
-# prepare data for MA
-prep_data_ma <- function(df){
-  df1 <- df %>% dplyr::select(-probe) %>% 
-    left_join(probe_gene, by="probes") %>% 
-    left_join(convert_genes %>% 
-                mutate(entrezgene_id=as.character(entrezgene_id)),
-              by=c("gene"="entrezgene_id")) 
-  df2 <- df1 %>%
-    mutate(SD=(logFC-CI.L)/1.96) %>% # SE for effect size - we have 95%  CI = 1.96*SD
-    dplyr::select(probes, hgnc_symbol, logFC, SD, P.Value) %>%
-    filter(!is.na(hgnc_symbol), hgnc_symbol!="") %>%
-    distinct() %>% 
-    group_by(hgnc_symbol) %>%
-    mutate(n=n()) 
-  return(df2)
-}
+# run on full model
+ma_int_d <- data.frame(smok_ci_int_d) %>% 
+  #probe_gene_entrez() %>%
+  add_gene() %>%
+  mutate(chromosome="") %>%
+  dplyr::rename(geneSymbol=gene, ID=probes) %>%
+  run_clean_ma()
 
-# clean + run probe data thru meta-analysis, clean up output
-# TODO update src to n
-run_clean_ma <- function(df){
-  df2 <- prep_data_ma(df)
-  multi_probe_gene <- df2 %>% filter(n>1) %>% group_split(hgnc_symbol)
-  ma_vals <- lapply(multi_probe_gene, ma_probes_genes)
-  mult_gene_df <- data.frame(apply(do.call(rbind, ma_vals) , c(1,2), unlist)) %>%
-    mutate(across(c(contains("logFC"), p), ~as.numeric(as.character(.)) ))
-  comb_ma_dat <- df2 %>% filter(n==1) %>% 
-    dplyr::rename(gene=hgnc_symbol, p=P.Value) %>%
-    mutate(logFC.l=logFC-1.96*SD,
-           logFC.u=logFC+1.96*SD) %>%
-    dplyr::select(colnames(mult_gene_df)) %>%
-    mutate(src="single") %>%
-    bind_rows(mult_gene_df %>% mutate(src="mult")) %>% 
-    arrange(p)
-  comb_ma_dat$adj.p <- p.adjust(comb_ma_dat$p, method="fdr")
-  return(comb_ma_dat)
-}
+ma_smok_d <- data.frame(smok_ci_smok_d) %>% 
+  #probe_gene_entrez() %>%
+  add_gene() %>%
+  mutate(chromosome="") %>%
+  dplyr::rename(geneSymbol=gene, ID=probes) %>%
+  run_clean_ma()
 
-# baseline model
+
+ma_sex_d <- data.frame(smok_ci_sex_d) %>% 
+  #probe_gene_entrez() %>%
+  add_gene() %>%
+  mutate(chromosome="") %>%
+  dplyr::rename(geneSymbol=gene, ID=probes) %>%
+  run_clean_ma()
+
+
+# save results
+save(ma_int_d, ma_sex_d, ma_smok_d, file="data/ae_meta_out.RData")
+#save(ma_d, file="data/ae_meta_out_entrez.RData")
+
+# write out STAMS
+stams_out <- map_to_stams(ma_int_d, "data/ae_mapped.RData")
+stams_out <- map_to_stams(ma_sex_d, "data/ae_mapped_sex.RData")
+stams_out <- map_to_stams(ma_smok_d, "data/ae_mapped_smok.RData")
+
+# can't map 18%
+stams_out <- map_to_stams(ma_d, "data/ae_mapped.RData")
+length(stams_out$Gene) # 16461
+missing_gene <- setdiff(ma_d$gene, stams_out$Gene) # 3722
+missing2 <- missing_gene[!sapply(missing_gene, function(x) 
+  str_detect(x, "LINC|LOC|-AS"))]
+# 1531
+
+
+# with entrez can't map 15%, unclear which is better
+# stams_out_entrez <- map_to_stams(ma_d, "data/ae_mapped_entrez.RData")
+# length(setdiff(stams_out$STRING_id, stams_out_entrez$STRING_id)) # 625
+# length(setdiff(stams_out_entrez$STRING_id, stams_out$STRING_id)) # 732
+
+# look at output for baseline model
 comb_ma_dat <- run_clean_ma(smok_ci_int_p)
 comb_ma_dat %>% filter(adj.p < 0.05) %>% nrow() # 179
 comb_ma_dat %>% filter(adj.p < 0.05) %>% dplyr::select(-src) %>% head(10)
 
 # date model
-comb_ma_dat <- run_clean_ma(smok_ci_int_d)
+df <- smok_ci_int_d %>% 
+  add_gene() %>% 
+  filter(gene=="SLC25A37") %>%  
+  mutate(SD=(logFC-CI.L)/1.96) 
+
+res <- metagen(df %>% pull(logFC),
+        df %>% pull(SD),
+        studlab=df %>% pull(probes),
+        comb.fixed = TRUE,
+        comb.random = FALSE,
+        method.tau = "DL",
+        hakn = FALSE,
+        prediction = FALSE,
+        sm = "MD")
+forest.meta(res) # plot the results
+
+comb_ma_dat_d <- run_clean_ma(smok_ci_int_d)
+
+
+
+smok_ci_int_d %>% add_gene() %>% 
+  filter(!is.na(gene)) %>% 
+  group_by(gene) %>% 
+  summarize(P=min(P.Value)) %>%
+  select(gene, P) %>%
+  arrange(P) %>%
+  mutate(P.adj=p.adjust(P, method="fdr")) 
+
+
 comb_ma_dat_d %>% filter(adj.p < 0.05) %>% nrow() # 7
 comb_ma_dat_d %>% filter(adj.p < 0.05) %>% dplyr::select(-src)
 intersect(comb_ma_dat_d  %>% filter(adj.p < 0.05) %>% pull(gene), unique(disc2$gene))
+
+# how do I plot
+
+
 
 # plot example genes!
 exp_long %>%
