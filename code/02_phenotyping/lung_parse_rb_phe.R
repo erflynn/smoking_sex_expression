@@ -204,3 +204,46 @@ lung_kept <- bind_rows(list(lung_s1, lung_s2, lung_s3, lung_s4, lung_s5, lung_s6
                             lung_s8, lung_s9, lung_s10, lung_s11))
 
 lung_kept %>% write_csv("data/lung_sample_labels.csv")
+
+# ----  filter part 2 ----- #
+
+lung_kept <- read_csv("data/lung_sample_labels.csv")
+lung_kept %>%
+  group_by(study_acc, smok) %>%
+  filter(smok %in% c("NS", "S")) %>%
+  count() %>%
+  pivot_wider(names_from="smok", values_from="n", values_fill=0) %>%
+  filter(NS >= 5 & S >= 5) %>%
+  filter(study_acc != "GSE40364") # 5
+# <-- lung smoking studies 
+
+lung_counts <- lung_kept %>% 
+  filter(!is.na(sex_lab),sex_lab != "unlabeled", !is.na(smok), smok != "FS" ) %>%
+  group_by(study_acc, sex_lab, smok) %>% 
+  count() %>%
+  unite(grp, c(sex_lab, smok)) %>%
+  pivot_wider(names_from="grp", values_from="n", values_fill=0)
+lung_counts
+
+(suff_samples_lung <- lung_counts %>% filter(across(contains("S"), ~.>=3)))
+# only three studies here again
+
+# add age and bi(?)
+gse31210 <- lung_kept %>% filter(study_acc=="GSE31210") %>% 
+  left_join(my_studies[["GSE31210"]]$df %>%
+              dplyr::select(sample_acc, `age (years)`, bi)) 
+
+
+gse32539 <- lung_kept %>% filter(study_acc=="GSE32539") %>% 
+  left_join(my_studies[["GSE32539"]]$df %>%
+            dplyr::select(sample_acc, age, rin, `quit how many years ago`, `pack years`, `tissue source`)) 
+
+save(gse31210, gse32539, file="data/lung_kept.RData")
+
+# ... this is not lung ... #
+#lung_kept %>% filter(study_acc=="GSE40364") %>% 
+#  left_join(my_studies[["GSE40364"]]$df) %>% fct_summ()
+
+
+
+# possibility: ?separate and look at cancer status?

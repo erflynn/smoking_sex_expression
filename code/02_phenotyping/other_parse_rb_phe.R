@@ -8,12 +8,21 @@ incl_studies2 <- read_csv("data/incl_studies.csv")
 smok_sl <- read_csv("data/smok_samples_w_sl.csv", col_types="clddccccc")
 my_studies <- all_stats[incl_studies2$study_acc]
 
+incl_studies3 <- incl_studies %>% filter(!tissue %in% c("airway epithelium", "blood", "lung")) # 44
 
+present_other <- incl_studies3$study_acc[(sapply(incl_studies3$study_acc, 
+                                                 function(x) file.exists(sprintf("data/pdata/%s.csv",x))))] 
+present_other # 15 of these I've already parsed
 
 # ---- bronchial ---- #
-
+# only keep 1!
 bronchial <- incl_studies2 %>% filter(tissue %in% c("bronchial epithelium or brushing"))
-intersect(bronchial$study_acc, all_f) # 5 previously done
+intersect(bronchial$study_acc, present_other) # 5 previously done
+
+# keep: "GSE7895" 
+# other tissue:
+#  "GSE8823" - alveolar macrophages - KEEP
+# "GSE114489" - lung - do not keep
 
 bronchial %>% pull(study_acc)
 
@@ -30,27 +39,28 @@ bronchial %>% pull(study_acc)
 
 # "GSE7895" -- KEEP
 fct_summ(my_studies[["GSE7895"]]$df)
-my_studies[["GSE7895"]]$df %>% select(-description) %>%
+my_studies[["GSE7895"]]$df %>% dplyr::select(-description) %>%
   mutate(tissue=source_name_ch1) %>%
   add_sl() %>%
   group_by(characteristics_ch1, sex_lab) %>%
   count()
 # "GSE37147"
+fct_summ(my_studies[["GSE37147"]]$df)
+
 # "GSE19027" 
-
-
+fct_summ(my_studies[["GSE19027"]]$df)
 
 
 missing_bronchial <- setdiff(bronchial$study_acc, all_f)
 
-# "GSE4635"  - appears all male? double check study info 
-fct_summ(my_studies[["GSE4635"]]$df)
-my_studies[["GSE4635"]]$df %>%
-  mutate(smok=case_when(str_detect(source_name_ch1, "current") ~ "S",
-                        str_detect(source_name_ch1, "never") ~ "NS" )) %>%
-  add_sl() %>%
-  group_by(smok, sex, sex_lab) %>%
-  count()
+# "GSE4635"  - discard - only 8 samples
+# fct_summ(my_studies[["GSE4635"]]$df)
+# my_studies[["GSE4635"]]$df %>%
+#   mutate(smok=case_when(str_detect(source_name_ch1, "current") ~ "S",
+#                         str_detect(source_name_ch1, "never") ~ "NS" )) %>%
+#   add_sl() %>%
+#   group_by(smok, sex, sex_lab) %>%
+#   count()
 
 
 # "GSE10038" -- all HIV1+, all smokers, all early copd
@@ -58,7 +68,7 @@ my_studies[["GSE4635"]]$df %>%
 
 #M "GSE103888" - mostly SCC or adenocarcinoma
 # only 4 controls, all non-smokers 
-fct_summ(my_studies[["GSE103888"]]$df)
+#fct_summ(my_studies[["GSE103888"]]$df)
 #incl_studies2 %>% filter(study_acc=="GSE103888") %>% pull(description)
 #incl_studies2 %>% filter(study_acc=="GSE103888") %>% pull(title)
 #my_studies[["GSE103888"]]$df %>% 
@@ -66,7 +76,7 @@ fct_summ(my_studies[["GSE103888"]]$df)
 #  group_by(gender, `smoking history`) %>%
 #  count()
 
-# "GSE114489" - bronchial dysplasia that progressed to SCC
+# "GSE114489" - bronchial dysplasia that progressed to SCC - ACTUALLY LUNG
 # ALMOST all are smokers
 # can either define as "normal" based on initial score -or- group 4
 #
@@ -76,16 +86,18 @@ fct_summ(my_studies[["GSE103888"]]$df)
 # Group 2 = Regressive bronchial dysplasia (BL >/= histology score 4, FU </= histology score 2);\t
 # Group 3 = Progressive non-dysplasia (BL </= histology score 2, FU >/= histology score 4);\t
 # Group 4 = Stable non-dysplasia (BL </= histology score 2, FU </= histology score 2)"
-fct_summ(my_studies[["GSE114489"]]$df)
-table(as.numeric(my_studies[["GSE114489"]]$df$`smoking pack/yr`)==0) #2 non-smokers
-my_studies[["GSE114489"]]$df %>%
-  mutate(group=str_extract(title, "^group [0-9]")) %>%
-  filter(group=="group 4") %>%
-  #filter(`bl ffpe dx` %in% c(1,2) |`bl frozen dx` %in% c(1,2)) %>%
-  add_sl() %>%
-  mutate(smok=ifelse(`smoking pack/yr`=="0", "ns", "s")) %>%
-  group_by(sex_lab, smok) %>%
-  count()
+# fct_summ(my_studies[["GSE114489"]]$df)
+# table(as.numeric(my_studies[["GSE114489"]]$df$`smoking pack/yr`)==0) #2 non-smokers
+# my_studies[["GSE114489"]]$df %>%
+#   mutate(group=str_extract(title, "^group [0-9]")) %>%
+#   filter(group=="group 4") %>%
+#   mutate(smok=ifelse(`smoking pack/yr`=="0", "ns", "s")) %>%
+#   group_by(smok) %>% count()
+#   #filter(`bl ffpe dx` %in% c(1,2) |`bl frozen dx` %in% c(1,2)) %>%
+#   add_sl() %>%
+# 
+#   group_by(sex_lab, smok) %>%
+#   count()
 
 
 # "GSE48798"  - looks POOLED, only 4 samples
@@ -94,11 +106,23 @@ my_studies[["GSE114489"]]$df %>%
 
 
 
-oral_studies <- incl_studies2 %>% filter(str_detect(tissue, "oral"))
-intersect(oral_studies$study_acc, all_f) # 3 already present!
+oral_studies <- incl_studies2 %>% filter(str_detect(tissue, "oral")) # 7
+intersect(oral_studies$study_acc, present_other) # 3 already present!
 setdiff(oral_studies$study_acc, all_f)
 
-# M"GSE16149" - all female?, s + ns
+# "GSE8987" - buccal mucosa and nasal epithelium
+fct_summ(my_studies[["GSE8987" ]]$df)
+
+# "GSE40013" - stress, whole saliva
+fct_summ(my_studies[["GSE40013" ]]$df)
+my_studies[["GSE40013" ]]$df %>% group_by(`chronic stress level`, `smoking status`) %>% count()
+
+
+# "GSE17913" - buccal mucosa, keep
+fct_summ(my_studies[["GSE17913" ]]$df)
+
+# M"GSE16149" - all female?, s + ns buccal mucosa
+# keep: smoking study
 fct_summ(my_studies[["GSE16149" ]]$df)
 my_studies[["GSE16149" ]]$df %>%
   add_sl() %>%
@@ -117,7 +141,7 @@ my_studies[["GSE42743" ]]$df %>%
 
 #? "GSE26549" - oral cancer
 #  ALL come from lesions?? need to be careful about which treatment arm
-fct_summ(my_studies[["GSE26549"]]$df %>% select(-description))
+fct_summ(my_studies[["GSE26549"]]$df %>% dplyr::select(-description))
 my_studies[["GSE26549"]]$df %>% 
   filter(#outcome=="no oral cancer development" &
     `time of biopsy`=="biopsy at baseline") %>%
@@ -126,8 +150,8 @@ my_studies[["GSE26549"]]$df %>%
 
 #M "GSE29330" - ACTUALLY head & neck cancer
 # only 5 controls, all NS -- normal mucosa??
-incl_studies2 %>% filter(study_acc=="GSE29330") %>% pull(title)
-fct_summ(my_studies[["GSE29330" ]]$df)
+#incl_studies2 %>% filter(study_acc=="GSE29330") %>% pull(title)
+#fct_summ(my_studies[["GSE29330" ]]$df)
 #my_studies[["GSE29330" ]]$df %>%
 #  filter(str_detect(source_name_ch1,"normal")) %>%
 # group_by(smoker, gender) %>%
@@ -141,6 +165,7 @@ incl_studies2 %>% filter(str_detect(tissue, "head/neck"))
 nasal <- incl_studies2 %>% filter(str_detect(tissue, "nasal"))
 intersect(all_f,nasal$study_acc) # "GSE8987"
 setdiff(nasal$study_acc, all_f)
+
 
 # "GSE73129" - looking at schizophrenia OE + lymphoblast 
 # SHOULD BE IN BLOOD + OE?
@@ -171,8 +196,33 @@ setdiff(nasal$study_acc, all_f)
 
 incl_studies2 %>% filter(str_detect(tissue, "esophagus"))
 
+# most barret's esophagus, otherwise former vs current (only 3 never)
+#fct_summ(my_studies[["GSE77563"]]$df %>% filter(`clinical diagnosis`=="none"))
+
+# all from tumors
+#fct_summ(my_studies[["GSE42363"]]$df)
+
+# all tumors? 
+#fct_summ(my_studies[["GSE36223"]]$df %>% filter(dysplasia == "negative"))
+
 incl_studies2 %>% filter(tissue %in% c("bladder"))
+# only 4 per grp after filtering for non-malignant samples
+#fct_summ(my_studies[["GSE21142"]]$df %>% filter(type=="non-malignant"))
+
+# all tumor
+#fct_summ(my_studies[["GSE93527"]]$df)
+
+# all tumor
+#fct_summ(my_studies[["GSE31684"]]$df)
+
+
 incl_studies2 %>% filter(str_detect(tissue, "alveolar"))
+
+# part AE, part AM
+fct_summ(my_studies[["GSE13896"]]$df)
+
+# all AM
+fct_summ(my_studies[["GSE2125"]]$df)
 
 
 # add: "GSE8823"  - actually alveolar macrophages from BL
@@ -181,13 +231,37 @@ fct_summ(my_studies[["GSE8823"]]$df)
 
 incl_studies2 %>% filter(str_detect(tissue, "sputum")) # one is done previous
 
-incl_studies2 %>% filter(tissue %in% c("brain"))
-incl_studies2 %>% filter(tissue %in% c("colon"))
-incl_studies2 %>% filter(tissue %in% c("LCL"))
-incl_studies2 %>% filter(tissue %in% c("liver"))
-incl_studies2 %>% filter(tissue %in% c("kidney"))
-incl_studies2 %>% filter(tissue %in% c("muscle"))
+#fct_summ(my_studies[["GSE46903"]]$df) # actually blood, too many types of cells
 
+#fct_summ(my_studies[["GSE54837"]]$df) # also blood, all COPD
+
+incl_studies2 %>% filter(tissue %in% c("brain"))
+#fct_summ(my_studies[["SRP115956"]]$df %>% filter(phenotype=="ctrl")) # multiple different brain parts
+
+fct_summ(my_studies[["GSE44456"]]$df %>% filter(phenotype=="control"))
+
+incl_studies2 %>% filter(tissue %in% c("colon"))
+
+fct_summ(my_studies[["SRP135671"]]$df) # look up?
+
+#fct_summ(my_studies[["GSE36807"]]$df) # no - all uc/cd
+
+incl_studies2 %>% filter(tissue %in% c("LCL"))
+fct_summ(my_studies[["GSE36868"]]$df %>% filter(str_detect(source_name_ch1, "control")))
+
+
+incl_studies2 %>% filter(tissue %in% c("liver"))
+#fct_summ(my_studies[["ERP109255"]]$df) # all some sort of liver disease
+
+
+#fct_summ(my_studies[["GSE9166"]]$df) # incubated with something
+
+
+incl_studies2 %>% filter(tissue %in% c("kidney"))
+fct_summ(my_studies[["GSE46699"]]$df %>% filter(tissue =="normal"))
+
+incl_studies2 %>% filter(tissue %in% c("muscle"))
+fct_summ(my_studies[["GSE18732"]]$df %>% filter(str_detect(title, "normal")))
 
 # from other:
 # "ERP110816" - SKIN
@@ -202,4 +276,8 @@ incl_studies2 %>% filter(tissue %in% c("muscle"))
 # actually induced sputum macrophages
 # only 4 controls (rest asthma or COPD)
 #my_studies[["GSE112260"]]$df %>% filter(diagnosis=="control") %>% group_by(`smoking status`) %>% count()
+
+
+
+
 

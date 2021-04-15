@@ -86,7 +86,8 @@ expData$Gene <- rownames(expData)
 #--------- "GSE4302" ------ #
 
 gse2 <- getGEO("GSE4302") # UCSF, Woodruff
-pDat2 <- pData(gse2[[1]]) %>% select(geo_accession, source_name_ch1, characteristics_ch1, relation, `sample type:ch1`)
+pDat2 <- pData(gse2[[1]]) %>% 
+  select(geo_accession, source_name_ch1, characteristics_ch1, relation, `sample type:ch1`)
 # reanalyzed by: GSE60486 
 
 pDat2.2 <- pDat2 %>% 

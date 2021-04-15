@@ -15,7 +15,7 @@ sl <- read_csv("data/smok_samples_w_sl.csv", col_types="clddccccc")
 add_sl <- function(df) {
   df %>% left_join(sl %>% 
                      dplyr::rename(sex_lab=expression) %>% 
-                     select(sample_acc, sex_lab))
+                     dplyr::select(sample_acc, sex_lab))
 }
 
 # --- code for DE viz --- #

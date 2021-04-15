@@ -71,7 +71,8 @@ gsm2.2 <- gsm2.1 %>%
   mutate(pack_years=as.numeric(str_replace_all(pack_years, " pack-years", ""))) %>%
   dplyr::select(gsm, age, sex, smoking, race_ethnicity, copd, pack_years, everything())
 
-gsm2.2 %>% fct_summ()
+full_gsm_dat <- gsm2.2 %>% select(-`smoking status:smoker, 1 pack-years`)
+full_gsm_dat %>% write_csv("data/rep_full_gsm.csv")
 # none of the DGM IDs are replicated
 
 gsm2.3 <- gsm2.2 %>% filter(!is.na(smoking), copd=="no", 

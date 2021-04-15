@@ -1,5 +1,20 @@
 # --- Leveraging Mice to Perform Imputation of Missing Covariates in Expression Data --- #
 
+# Setup:
+# 1. impute age, sex 
+# 2. looking at smoking-related effects
+# 3. smokers are on average older, more male smokers
+#
+# look at dataset with HDL!
+#
+# Evaluation:
+# 1. comparison to results without imputation
+# 2. comparison to expanded dataset vs complete cases
+# 3. vs basic mean imputation with no gex covars
+#
+# TODO: figure out how to nest nicely...
+
+
 library(mice)
 library(tidyverse)
 

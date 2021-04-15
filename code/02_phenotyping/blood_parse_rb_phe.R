@@ -4,15 +4,21 @@ library(tidyverse)
 load("data/study_sample_info.RData") # --> all_stats
 incl_studies <- read_csv("data/incl_studies.csv")
 smok_sl <- read_csv("data/smok_samples_w_sl.csv", col_types="clddccccc")
-my_studies <- all_stats[incl_studies2$study_acc]
+my_studies <- all_stats[incl_studies$study_acc]
 
-blood_studies <- incl_studies2 %>% filter(str_detect(tissue, "blood"))
+blood_studies <- incl_studies %>% filter(str_detect(tissue, "blood")) # --> 23
 present_blood <- blood_studies$study_acc[(sapply(blood_studies$study_acc, 
                                                  function(x) file.exists(sprintf("data/pdata/%s.csv",x))))]
+
 # 4/23
 # END RESULT: "GSE55962", "GSE42057", "GSE20189" :/ 
 # LARGER: exclude: GSE27272, GSE73408, GSE7055, GSE50011
 # other tissue: ERP110816, GSE112260
+
+# blood: start with 23
+# exclude: 4 b/c male-only or fetal
+# other tissue: 2
+# --> 17
 
 
 #---> KEEP!!! "GSE55962"  - used in other pubs, COPD
@@ -231,10 +237,109 @@ blood_s14 <- my_studies[["GSE56768"]]$df %>%
 #  count() %>% arrange(desc(n))
 
 
-blood_kept <- bind_rows(list(blood1, blood_s2, blood_s3, blood_s4, blood_s5, blood_s6, blood_s7,
-                             blood_s8, blood_s9, blood_s10, blood_s11, blood_s12, blood_s13, blood_s14))
+blood_kept <- bind_rows(list(blood1, blood_s2, blood_s3, blood_s4, blood_s5, 
+                             blood_s6, blood_s7,
+                             blood_s8, blood_s9, blood_s10, blood_s11, 
+                             blood_s12, blood_s13, blood_s14))
 
 blood_kept2 <- blood_kept %>% select(-smoking, -sex) 
 length(unique(blood_kept2$sample_acc))
 
 blood_kept2 %>% write_csv("data/blood_sample_labels.csv")
+
+# --------- #
+blood_kept2 <- read_csv("data/blood_sample_labels.csv")
+blood_kept2 %>% 
+  filter(is.na(smok)) %>% 
+  nrow() # 93!! ... all from one study though
+
+srp_meta <- read_tsv("ref/srp045500_metadata.txt")
+srp_meta2 <- srp_meta %>% dplyr::select(`Source Name`,
+                           `Characteristics [age]`,
+                           `Characteristics [sex]`,
+                           `Characteristics [clinical information]`,
+                           `Characteristics [disease]`,
+                           `Characteristics [cell type]`,
+                           `FactorValue [treatment]`) %>%
+  distinct()
+srp_meta2 %>% filter(`Characteristics [disease]` =="normal") %>% View()
+#contains("Source Name|sex|clinical information|disease|age|cell type"))
+# ... doesn't make sense, normal seems to be from 3 females + a variety of cell types
+
+
+# studies that contain smokers and non-smokers
+# vs. studies that contain males / females
+
+
+ blood_kept2 %>% 
+  group_by(study_acc) %>%
+  mutate(num_tot=n()) %>%
+  filter(is.na(sex_lab) | sex_lab=="unlabeled", !is.na(smok)) %>%
+  group_by(study_acc, num_tot) %>% count() # 53
+
+ # >> smoking studies
+ 
+
+# in blood, 10 studies contained at least 5 smokers and 5 non-smokers (healthy)
+blood_smok_studies <-blood_kept2 %>%
+  group_by(study_acc, smok) %>%
+  filter(smok %in% c("NS", "S")) %>%
+  count() %>%
+  pivot_wider(names_from="smok", values_from="n", values_fill=0) %>%
+  filter(NS >= 5 & S >= 5)
+
+# TODO: adjust counts for GSE103174, GSE56768 
+# remove: SRP045500
+blood_smok_studies %>%
+  filter(! study_acc %in% c("SRP045500"))
+
+
+blood_counts <- blood_kept2 %>% 
+  filter(!is.na(sex_lab),sex_lab != "unlabeled", !is.na(smok), smok != "FS" ) %>%
+  group_by(study_acc, sex_lab, smok) %>% 
+  count() %>%
+  unite(grp, c(sex_lab, smok)) %>%
+  pivot_wider(names_from="grp", values_from="n", values_fill=0)
+
+# go thru the ones with sufficient samples
+
+(suff_samples <- blood_counts %>% filter(across(contains("S"), ~.>=3)))
+# GSE103174 - insufficient after removing COPD
+my_studies[["GSE103174"]]$df %>% filter(copd!="yes") %>% group_by(group) %>% count()
+
+# GSE20189 looks good, no addentional demo
+blood_kept2 %>% filter(study_acc =="GSE20189") %>% left_join(my_studies[["GSE20189"]]$df ) %>%
+  fct_summ()
+
+gse20189 <- blood_kept2 %>% filter(study_acc =="GSE20189") 
+
+# "GSE42057" - alot 
+gse42057 <- blood_kept2 %>% filter(study_acc =="GSE42057")  %>% left_join(my_studies[["GSE42057"]]$df ) %>%
+  dplyr::select(-finalgold, -gender, -smokcignow, -source_name_ch1, -title, -tissue)
+gse42057 %>% fct_summ()
+
+# "GSE55962" - has age
+gse55962 <- blood_kept2 %>% filter(study_acc =="GSE55962") %>% left_join(my_studies[["GSE55962"]]$df) %>% 
+  dplyr::select(-description, -source_name_ch1, -title, -`disease status`, -`smoking status`, -`cell type`, -gender)
+
+# "GSE56768" - no, different types? insufficient after grouping, b/c some stimulated + some not
+blood_kept2 %>% filter(study_acc =="GSE56768") %>% left_join(my_studies[["GSE56768"]]$df %>% 
+                                                               dplyr::select(sample_acc, source_name_ch1, tissue, 
+                                                                             stimulus, `cell marker`, `cell type`)) %>%
+  filter(source_name_ch1=="whole blood", is.na(stimulus) | stimulus=="unstimulated") %>%
+  fct_summ()
+
+# ... only three studies ... #
+save(gse55962, gse20189, gse42057, file="data/blood_kept_final.RData")
+
+# describe what is going on with these
+blood_study_info <- cbind(suff_samples %>% ungroup() %>%
+  filter(study_acc %in% c("GSE20189",  "GSE42057", "GSE55962")),
+  tibble(additional_demo=c("none", "age;pack_years;bmi;fev;activity","age"), 
+         filtering=c("only healthy", "only healthy", "only healthy"),
+         blood_component=c("whole blood", "pbmc", "leukocytes")))
+
+blood_study_info %>% write_csv("data/blood_study_kept_info.csv")
+# ^ sex-by-smoking studies
+
+

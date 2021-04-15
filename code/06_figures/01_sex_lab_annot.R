@@ -35,6 +35,12 @@ smok_sl <- read_csv("data/smok_samples_w_sl.csv", col_types="clddccccc")
 annot_counts %>%
   write_csv("data/supp_tables/s2_annot_counts.csv") # SUPPLEMENTARY TABLE 2
 
+# make a plot showing the sex breakdown / labeling of the filtered
+smok_tab3 <- read_csv("data/supp_tables/s4_list_smok_studies.csv")
+smok_filt_sl <- smok_sl %>% 
+  filter(study_acc %in% smok_tab3$study_acc) %>%
+  select(study_acc, sample_acc, expression, metadata)
+
 # --- 4. breakdown by tissue type --- #
 kept_history <- annot_studies %>% 
   filter(study_type=="smoking history") 
@@ -119,6 +125,8 @@ plotAlluvialSample <- function(df){
                         panel.grid.minor = element_blank()) + 
     theme(legend.position = "none") 
 }
+plotAlluvialSample(smok_filt_sl)
+ggsave("figures/paper_figs/figs5_de_sample_breakdown.pdf")
 
 plotAlluvialSample(sex_lab_kept)
 ggsave("figures/paper_figs/fig2_human_smok.pdf")
@@ -194,6 +202,11 @@ ggsave("figures/paper_figs/s_fig2_study_all_smok.pdf")
 studyAlluvial(sex_lab_non)+
   scale_fill_manual(values=alluv_col[c(1,2,3,5,6)])
 ggsave("figures/paper_figs/s_fig2_study_non_smok.pdf")
+
+
+studyAlluvial(smok_filt_sl %>% mutate(present=NA, num_reads=NA, p_male=NA, keep=NA, type=NA))+
+  scale_fill_manual(values=c(alluv_col[1], alluv_col[3], alluv_col[4], alluv_col[5], alluv_col[6]))
+ggsave("figures/paper_figs/figs5_de_study_breakdown.pdf")
 
 # --- TABLES --- #
 get_sample_counts <- function(df){
