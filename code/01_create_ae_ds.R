@@ -243,22 +243,24 @@ dup_dat3 <- dup_dat2 %>%
   anti_join(dgm_id_to_grp) %>%
   bind_rows(condensed_id) # 464
 
-dup_dat3$keep_acc <- sapply(dup_dat3$geo_accession, function(x) str_split(x, ";")[[1]][[1]])
-length(unique(dup_dat3$keep_acc )) # 466
-nrow(dup_dat3) # 466
+dup_dat3$keep_acc <- sapply(dup_dat3$geo_accession, 
+                            function(x) str_split(x, ";")[[1]][[1]])
+length(unique(dup_dat3$keep_acc )) # 464
+nrow(dup_dat3) # 464
 colnames(expDat) <- str_extract_all(colnames(expDat), "^[0-9A-Za-z]+")
 dup_dat4 <- dup_dat3 %>% filter(keep_acc %in% colnames(expDat)) # 457
 
 
 expDat2 <- as.matrix(expDat[,dup_dat4$keep_acc]) # 457
 pDat2 <- dup_dat4 %>% 
+  select(-geo_accession) %>%
   mutate(geo_accession=keep_acc) %>% 
   select(-grp, -keep_acc) %>%
   mutate(sex=case_when(
     sex=="f" ~ "female",
     sex=="m" ~ "male")) %>%
   mutate(across(everything(), ~ifelse(.=="", NA, .)))
-
+pDat2 %>% filter(str_detect(geo_accession, ";"))
 fct_summ(pDat2)
 pDat2 %>% filter(sex!=sex_lab & sex_lab!="unlabeled") # 11 are mismatched
 
@@ -317,9 +319,43 @@ pDat4 <- pDat3 %>%
   rename(sex=toker_sex) %>%
   left_join(download_info %>% select(gsm, submission_date), by=c("geo_accession"="gsm"))
 expDat4 <-expDat2[,pDat4$geo_accession]
-fct_summ(pDat4) # 105 missing RE, 109 missing age
-save(expDat4, pDat4, file="data/ae_full_exp.RData")
-pDat4 %>% write_csv("data/ae_pdat_full.csv")
+
+
+# grab study info + tissue annotations
+library('GEOmetadb')
+con <- dbConnect(SQLite(), "../GEOmetadb.sqlite")
+list_samples <- paste(pDat4$geo_accession, collapse="','")
+gse_gsm <- dbGetQuery(con, sprintf("SELECT gse,gsm FROM gse_gsm WHERE gsm IN ('%s');",
+                                list_samples))
+dbDisconnect(con)
+list_studies_f <- gse_gsm %>% distinct(gse) %>% pull(gse)
+gse_gsm %>% filter(gse %in% c("GSE4302"))
+gse2 <- gse_gsm %>% 
+  group_by(gsm)  %>%
+  summarize(gse=paste(gse, collapse=";"))
+
+meta <- read_csv("data/comb_sample_epithelium_metadata.csv")
+pDat4.2 <- pDat4 %>% 
+  left_join(gse2, by=c("geo_accession"="gsm")) %>%
+  left_join(meta %>% select(geo_accession, tissue)) 
+  
+sum(is.na(pDat4.2$tissue))
+pDat5 <- pDat4.2 %>% 
+  filter(str_detect(tissue, "airway") | is.na(tissue),
+         !gse %in% "GSE4302" )%>% 
+  rename(study_acc=gse) %>%
+  filter(!geo_accession %in% c("GSM492607","GSM492608",
+                            "GSM492609","GSM492610","GSM492612","GSM492614",
+                            "GSM492615","GSM492617")) # basal cell culture
+
+
+
+fct_summ(pDat5) # 353
+
+expDat5 <- expDat4[,pDat5$geo_accession]
+save(expDat5, pDat5, file="data/ae_full_exp.RData")
+pDat5 %>% write_csv("data/ae_pdat_full.csv")
+
 
 # 4. PC plot to demo effects
 

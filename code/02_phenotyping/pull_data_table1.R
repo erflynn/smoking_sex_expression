@@ -78,13 +78,16 @@ gse42057 %>%
   filter(sex_lab != ref_sex) # only 1 we could not label
 gse42057 %>% write_csv("data/pdata_filt/gse42057.csv")
 
-# "GSE55962" - has age
-gse55962 <- blood_kept2 %>% 
-  filter(study_acc =="GSE55962") %>% 
-  left_join(my_studies[["GSE55962"]]$df) %>% 
-  dplyr::select(-description, -source_name_ch1, -title, -`disease status`, -`smoking status`)
-gse55962 <- gse55962 %>% filter(sex_lab == gender) %>% rename(tissue=`cell type`) 
-gse55962 %>% write_csv("data/pdata_filt/gse55962.csv")
+# "GSE55962" - has age, too few after accounting for duplicates
+#gse55962 <- blood_kept2 %>% 
+#  filter(study_acc =="GSE55962") %>% 
+#  left_join(my_studies[["GSE55962"]]$df) 
+#gse55962.2 <- gse55962 %>% filter(str_detect(title, "_0min_rep1"))
+#gse55962 <-  %>% 
+#  dplyr::select(-description, -source_name_ch1, -title, -`disease status`, -`smoking status`)
+#gse55962 <- gse55962 %>% filter(sex_lab == gender) %>% 
+#  rename(tissue=`cell type`) 
+#gse55962 %>% write_csv("data/pdata_filt/gse55962.csv")
 
 # "GSE56768" - remove stimulated
 gse56768 <- blood_kept2 %>% filter(study_acc =="GSE56768") %>% 

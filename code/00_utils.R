@@ -2,7 +2,8 @@
 library(tidyverse)
 library(miceadds)
 library(meta)
-
+library(ggrepel)
+library(variancePartition)
 
 # ---- general summary  ---- #
 
@@ -42,7 +43,7 @@ volcano_plot_de <- function(df, pcut=0.01, num_display=20){
       logFC < 0 ~ "down",
       logFC > 0 ~ "up")) %>%
     mutate(gene_grp=factor(gene_grp, levels=c("down", "up", "not sig")))
-  ggplot(df2, aes(x=logFC, y=-log10(adj.P.Val)))+
+  ggplot(df2, aes(x=logFC, y=-log10(P.Value)))+
     geom_point(aes(col=gene_grp), alpha=0.5)+
     geom_label_repel(data=df2 %>% head(num_display), 
                      aes(label=gene), size=3)+
@@ -78,16 +79,21 @@ ma_probes_genes <- function(df){
               "logFC"=ma$TE.fixed,
               "logFC.l"=ma$lower.fixed,
               "logFC.u"=ma$upper.fixed,
-              "p"=ma$pval.fixed))
+              "p"=ma$pval.fixed,
+              "n"=unique(df$n)))
   
 }
 # TODO update src to n
 run_clean_ma <- function(df){
   df2 <- prep_data_ma(df)
   multi_probe_gene <- df2 %>% filter(n>1) %>% group_split(geneSymbol)
+  if (length(multi_probe_gene) <= 1){
+    return(df2)
+  }
   ma_vals <- lapply(multi_probe_gene, ma_probes_genes)
-  mult_gene_df <- data.frame(apply(do.call(rbind, ma_vals) , c(1,2), unlist)) %>%
-    mutate(across(c(contains("logFC"), p), ~as.numeric(as.character(.)) ))
+  mult_gene_df <- data.frame(apply(data.table::rbindlist(ma_vals) , c(1,2), unlist)) %>%
+    mutate(across(c(contains("logFC"), p), ~as.numeric(as.character(.)) )) %>%
+    mutate(n=as.numeric(as.character(n)))
   comb_ma_dat <- df2 %>% filter(n==1) %>% 
     dplyr::rename(gene=geneSymbol, p=P.Value) %>%
     mutate(logFC.l=logFC-1.96*SD,
@@ -184,7 +190,9 @@ add_gene_info <- function(df, dataset="affy"){
 add_gene <- function(df){
   if (file.exists("ref/probe_gene.RData")){
     df <- data.frame(df)
-    df$probes <- rownames(df)
+    if (!"probes" %in% colnames(df)){
+      df$probes <- rownames(df)
+    }
     load("ref/probe_gene.RData")
     
   } else {
@@ -244,3 +252,57 @@ map_to_stams <- function(df, fname){
   return(gene_mapped2)
 }
 
+
+####### variance partition ##### 
+varPartPC <- function(expr, cutoff=0.8){
+  expr_pcs <- prcomp(t(expr))
+  last_kept <- which(summary(expr_pcs)$importance["Cumulative Proportion",] < cutoff)
+  if (length(last_kept)==0){
+    last_pc <- 2
+  } else {
+    last_pc <- max(last_kept)
+  }
+  expr_pcs2 <- expr_pcs$x[,1:last_pc]
+  props <- summary(expr_pcs)$importance["Proportion of Variance", 1:last_pc]
+  return(list("pcs"=expr_pcs2, "props"=props))
+}
+
+get_pvca <- function(expr_pcs_t, phe, form, props, cutoff=0.8){
+  varPart <- fitExtractVarPartModel(expr_pcs_t, form, phe)
+  return( colSums(varPart*props)/cutoff)
+}
+
+rand_pvca1 <- function(expr_pcs_t, phe, form, props, cutoff=0.8){
+  phe2 <- phe
+  phe2$sex <- sample(phe$sex, nrow(phe2), replace=F)
+  phe2$smoking <- sample(phe$smoking, nrow(phe2), replace=F)
+  return(get_pvca(expr_pcs_t, phe2, form, props, cutoff))
+}
+
+rand_pvca <- function(n, expr_pcs_t, phe, form, props, cutoff=0.8){
+  res <- lapply(1:n,  function(i) 
+    rand_pvca1(expr_pcs_t, phe, form, props, cutoff))
+  df <- do.call(cbind, lapply(res[!is.na(res)], data.frame)) 
+  data.frame(t(df) )  %>% 
+    as_tibble() %>%
+    mutate(n=1:n()) %>%
+    pivot_longer(-n, names_to="covariate", values_to="variance") %>%
+    select(-n) %>%
+    mutate(src="random") %>%
+    mutate(covariate=str_replace_all(covariate, "\\.", ":"))
+}
+
+plot_pvca_rand <- function(est_var, rand_var){
+  tibble("covariate"=names(est_var),
+         "variance"=unlist(est_var)) %>%
+    mutate(src="estimated") %>%
+    bind_rows(rand_var) %>%
+    filter(covariate!="Residuals") %>%
+    ggplot(aes(x=covariate, y=variance, col=src))+
+    geom_boxplot(position=position_dodge(0), alpha=0.5)+
+    theme_bw()+
+    ylab("fraction of variance")+
+    xlab("")+
+    scale_color_manual(values=c("red", "black"))+
+    theme(legend.position = "None")
+}

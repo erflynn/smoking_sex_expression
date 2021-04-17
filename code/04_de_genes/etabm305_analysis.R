@@ -15,16 +15,19 @@
 # - compare to their genes
 
 library('tidyverse')
+library('lumi')
 library('limma')
 library('bigpca')
 library('STRINGdb')
+source("code/00_utils.R")
 
-
-# --- 0. view in PC space --- #
-load("data/blood/blood_proc.RData")
+load("data/blood/blood_proc.RData") # --> filt_ds
 pDat2 <- pData(filt_ds)
+exp_d <- exprs(filt_ds)
+# --- 0. view in PC space --- #
+
 start_time = Sys.time(); 
-blood_bp1 <- big.PCA(exprs(filt_ds), pcs.to.keep=3); 
+blood_bp1 <- big.PCA(exp_d, pcs.to.keep=3); 
 end_time=Sys.time()
 end_time-start_time # 4 MINUTES
 
@@ -52,7 +55,6 @@ ggplot(blood_pcs2,
 
 # --- 1. remove undetectable probes  --- #
 # compare to ctls... hmm?
-exp_d <- exprs(filt_ds)
 # plot(density(exp_d["trpF",]), xlim=c(0, 10))
 # lines(density(exp_d["lysA",]))
 # lines(density(exp_d["pheA",]))
@@ -64,10 +66,6 @@ exp_d <- exprs(filt_ds)
 # lines(density(exp_d["GI_10047099-S",]), col="red")
 # lines(density(exp_d["GI_10047103-S",]), col="red")
 
-
-# remove probes in the bottom 1% of variances ?
-#row_vars <- apply(exp_d, 1, sd)
-#quantile(row_vars, 0.01)
 
 # include genes that are present
 presentCount <- detectionCall(filt_ds)
@@ -102,11 +100,86 @@ gene_metadata2 <- gene_metadata %>%
 stopifnot(nrow(gene_metadata2)==length(probeList))
 gene_metadata_sort <- data.frame(gene_metadata2)
 rownames(gene_metadata_sort) <- gene_metadata_sort$probe
+save(gene_metadata_sort, file="data/blood_gene_meta.RData")
 
+# ---- 1.5 double check sex labels ---- #
 
+ychr_probes <- gene_metadata %>% 
+  filter(chromosome_name=="Y", probe %in% probeList) %>%
+  pull(probe)
+
+massiRAcc <- function(expData, ychr.genes, threshold=3, na.cut=0.3, min.samples=10, plot=FALSE){
+  # note - this reorders the results!, have fixed this
+  
+  require('massiR')
+  if (ncol(expData)==1 | is.null(colnames(expData))){
+    print("Error, massir method - there are not enough samples without missing data")
+    return(NULL)
+  }
+  cols <- colnames(expData)
+  expData <- expData[,order(cols)]
+  
+  # label sex
+  ychr.genes2 <- sapply(intersect(ychr.genes, rownames(expData)), as.character)
+  
+  # remove columns with missing data
+  na.count <- apply(expData[ychr.genes2,], 2, function(x) sum(is.na(x)))
+  genes.df <- expData[,na.count < na.cut*length(ychr.genes2)]
+  
+  # fails if there are few columns left
+  if (ncol(genes.df) < min.samples){
+    print("Error, massir method - there are not enough samples without missing data")
+    return(NULL)
+  }
+  
+  cols <- colnames(expData)
+  
+  # remove genes with missingness
+  genes.df2 <- genes.df[complete.cases(genes.df),]
+  ychr.genes3 <- sapply(intersect(ychr.genes, rownames(expData)), as.character)
+  
+  # return an error if few genes are present
+  if (length(ychr.genes3)<2){
+    print("Error, less than 2 ychr genes present")
+    return(NULL)
+  }
+  ychr.df <- data.frame(row.names=(ychr.genes3))
+  ds.y.out <- massi_y(data.frame(genes.df2), ychr.df)
+  
+  massi.select.out <-
+    + massi_select(data.frame(genes.df2), ychr.df, threshold=threshold) 
+  
+  results <- massi_cluster(massi.select.out)
+  if (plot){
+    massi_cluster_plot(massi.select.out, results)
+  }
+  sample.results <- data.frame(results$massi.results)
+  sex.lab <- sample.results$sex
+  names(sex.lab) <- sample.results$ID
+  
+  # add in the missing columns
+  rem.cols <- setdiff( cols, names(sex.lab))
+  rem.vec <- rep(NA, length(rem.cols))
+  names(rem.vec) <- rem.cols
+  sex_lab2 <- c(sex.lab,rem.vec)
+  return(sex_lab2[cols])
+}
+
+# remove a bunch from the environment
+rm(exp_d, filt_ds, gene_metadata, gene_metadata_sort, gene_metadata2, probeList, presentCount)
+
+massi_lab <- massiRAcc(exp_d2, ychr_probes, plot=F, threshold=4)
+pDat_sex <- pDat2 %>% 
+  left_join(tibble(sampleID=names(massi_lab),
+       massir_sex=unlist(massi_lab))) # 10 do not match
+pDat3 <- pDat_sex %>%
+  filter(massir_sex==sex)
+
+eDat3 <- exp_d2[,pDat3$sampleID]
+save(pDat3, eDat3, file="data/blood_in_data.RData")
 # ----- 2. covariate analysis  ----- #
 # - count of smoker/non-smoker by sex
-pDat2 %>% 
+pDat3 %>% 
   group_by(sex, smoking) %>% 
   count() %>%
   pivot_wider(names_from="smoking", values_from="n") %>%
@@ -123,8 +196,70 @@ pDat2 %>%
 
 prop.test(x=c(120, 177), n=c(721, 498))
 
+etabm305_phe3 <- pDat3
+# covariate table
+covar_ss <- etabm305_phe3 %>%
+  ungroup() %>%
+  mutate(hdl=as.numeric(hdl)) %>%
+  group_by(smoking, sex) %>%
+  summarize(n=n(),
+            m_age=mean(age, na.rm=T),
+            sd_age=sd(age, na.rm=T),
+            missing_hdl=sum(is.na(hdl)),
+            m_hdl=mean(hdl, na.rm=T),
+            sd_hdl=sd(hdl, na.rm=T)) %>%
+  ungroup() %>%
+  unite(grp, c(smoking, sex)) %>%
+  pivot_longer(-grp) %>%
+  mutate(value=round(value, 3)) %>%
+  pivot_wider(names_from="grp")
+
+covar_s <- etabm305_phe3 %>%
+  ungroup() %>%
+  mutate(hdl=as.numeric(hdl)) %>%
+  group_by(smoking) %>%
+  summarize(n=n(),
+            m_age=mean(age, na.rm=T),
+            sd_age=sd(age, na.rm=T),
+            missing_hdl=sum(is.na(hdl)),
+            m_hdl=mean(hdl, na.rm=T),
+            sd_hdl=sd(hdl, na.rm=T)) %>%
+  ungroup() %>%
+  pivot_longer(-smoking) %>%
+  mutate(value=round(value, 3)) %>%
+  pivot_wider(names_from="smoking")
+
+covar_blood <- left_join(covar_s, covar_ss) 
+covar_blood %>%
+  write_csv("data/lymphocyte_covar.csv")
+
+# sex - smoking
+table(etabm305_phe3$sex, etabm305_phe3$smoking)
+chisq.test(table(etabm305_phe3$sex, etabm305_phe3$smoking)) # p = 7 x 10^-14
+prop.test(c(601, 120), c(601+321, 120+177)) # .. same
+
+# age - sex, smoking
+t.test(etabm305_phe3$age[etabm305_phe3$sex=="female"], 
+       etabm305_phe3$age[etabm305_phe3$sex=="male"]) # p=0.2615
+
+t.test(etabm305_phe3$age[etabm305_phe3$smoking=="non-smoker"], 
+       etabm305_phe3$age[etabm305_phe3$smoking=="smoker"]) # p=0.919
+
+# hdl - sex, smoking, missing
+present_hdl  <- etabm305_phe3 %>%
+  mutate(hdl=as.numeric(hdl)) %>%
+  filter(!is.na(hdl)) 
+t.test(present_hdl$hdl[present_hdl$sex=="female"], 
+       present_hdl$hdl[present_hdl$sex=="male"]) # p=0.23
+
+t.test(present_hdl$hdl[present_hdl$smoking=="non-smoker"], 
+       present_hdl$hdl[present_hdl$smoking=="smoker"]) # p=0.82
+
+chisq.test(table(is.na(as.numeric(etabm305_phe3$hdl)), etabm305_phe3$sex)) # 0.56
+# 0.56
+
 # - violin plots for age, HDL
-ggplot(pDat2 %>% 
+ggplot(pDat3 %>% 
          unite( "grp", c(sex, smoking)), 
        aes(x=grp, y=age))+
   geom_violin()+
@@ -137,7 +272,7 @@ ggplot(pDat2 %>%
   xlab("")
 ggsave("figures/blood_age_dist.png")
 
-ggplot(pDat2 %>% 
+ggplot(pDat3 %>% 
          unite( "grp", c(sex, smoking)), 
        aes(x=grp, y=hdl))+
   geom_violin()+
@@ -156,27 +291,30 @@ aov_in <- pDat %>%
   dplyr::select(smok, expr_sex, age) %>%
   filter(!is.na(age))
 
-two.way <- aov(age ~ smoking+sex+smoking*sex, data = pDat2 %>% 
+two.way <- aov(age ~ smoking+sex+smoking*sex, data = pDat3 %>% 
                  select(smoking, sex, age))
 summary(two.way) 
 
-two.way.hdl <- aov(hdl ~ smoking+sex+smoking*sex, data = pDat2 %>% 
+two.way.hdl <- aov(hdl ~ smoking+sex+smoking*sex, data = pDat3 %>% 
                  select(smoking, sex, hdl))
 summary(two.way.hdl) 
 
 # ---- 3. run DE analysis at the probe level ---- #
-design <- model.matrix(~ sex + smoking + smoking*sex + age, data=pDat2) 
-fit <- lmFit(exp_d2, design)
+design <- model.matrix(~ sex + smoking + smoking*sex + age, data=pDat3) 
+fit <- lmFit(eDat3, design)
 fit <- eBayes(fit)
-fit$genes <- data.frame(ID= probeList, geneSymbol=gene_metadata_sort$gene, 
+
+fit$genes <- data.frame(ID= rownames(eDat3), geneSymbol=gene_metadata_sort$gene, 
                         chromosome=gene_metadata_sort$chromosome_name, 
                         stringsAsFactors=FALSE)
 
 df_smok <- data.frame(topTable(fit, coef="smokingsmoker",  number=nrow(fit))) %>% 
   rename(gene=geneSymbol) 
-df_smok %>% filter(adj.P.Val < 0.05) %>% nrow() 
-# 65 probes, this is many fewer than was found before
+df_smok %>% filter(adj.P.Val < 0.05) %>% nrow()  # 80
+# 80 probes, this is many fewer than was found before
 # should we compare with a model that does not include the interaction term
+
+
 
 # --- 4. plot DE results --- #
 volcano_plot_de(data.frame(topTable(fit, coef="sexmale",  number=nrow(fit)) %>% 
@@ -206,12 +344,12 @@ smok_ci_int_p <- topTable(fit, coef="sexmale:smokingsmoker", number=nrow(fit),
                           confint = TRUE)
 smok_ci_int_p <- data.frame(smok_ci_int_p)
 comb_ma_dat <- run_clean_ma(smok_ci_int_p)
-comb_ma_dat %>% select(-src) %>% head(10)
+comb_ma_dat %>% dplyr::select(-src) %>% head(10)
+save(comb_ma_dat, smok_ci_int_p, file="data/results/blood_int.RData")
 
 smok_ci_sex <- topTable(fit, coef="sexmale", number=nrow(fit), 
                           confint = TRUE)
 sex_ma <- run_clean_ma(data.frame(smok_ci_sex))
-sex_ma %>% select(-src) %>% head(10)
 
 smok_ci_smok <- topTable(fit, coef="smokingsmoker", number=nrow(fit), 
                         confint = TRUE)
@@ -219,16 +357,19 @@ smok_ma <- run_clean_ma(data.frame(smok_ci_smok))
 smok_ma %>% select(-src) %>% head(10)
 smok_ma %>% filter(adj.p < 0.05) # 45 (their FDR cutoff)
 smok_ma %>% filter(p < 0.001) # 68 (their nominal P cutoff)
+save(smok_ma, sex_ma, smok_ci_smok, smok_ci_sex, file="data/results/blood_smok.RData")
+
+# --- variance analysis ---- #
 
 
 # ---- 6. visualize some interaction effects --- #
-expDat4 <- data.frame(exp_d2)
-expDat4$probe <- rownames(exp_d2)
+expDat4 <- data.frame(eDat3)
+expDat4$probe <- rownames(eDat3)
 exp_long <- expDat4 %>% 
   left_join(gene_metadata_sort, by="probe") %>%
   select(-grp, -chromosome_name, -probe) %>%
   pivot_longer( -gene, names_to="sampleID", values_to="expr") %>%
-  left_join(pDat2, by=c("sampleID"))
+  left_join(pDat3, by=c("sampleID"))
 
 # TODO - figure out how to add lines!
 df_exp <- exp_long %>%
@@ -254,8 +395,8 @@ df_exp %>%
 smok_ci_int_p %>% filter(geneSymbol=="SLC1A5")
 
 
-design <- model.matrix(~ smoking, data=pDat2) 
-fit <- lmFit(exp_d2, design)
+design <- model.matrix(~ smoking, data=pDat3) 
+fit <- lmFit(eDat3, design)
 fit <- eBayes(fit)
 fit$gene <- data.frame(ID= probeList, geneSymbol=gene_metadata_sort$gene, 
                         chromosome=gene_metadata_sort$chromosome_name, stringsAsFactors=FALSE)

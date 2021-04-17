@@ -31,66 +31,7 @@ etabm305_phe3 <- etabm305_phe2 %>%
   dplyr::select(-test)
 etabm305_phe3 %>% write_csv("data/etabm305_phe_processed.csv")
 
-# covariate table
-covar_ss <- etabm305_phe3 %>%
-  ungroup() %>%
-  mutate(hdl=as.numeric(hdl)) %>%
-  group_by(smoking, sex) %>%
-  summarize(n=n(),
-            m_age=mean(age, na.rm=T),
-            sd_age=sd(age, na.rm=T),
-            missing_hdl=sum(is.na(hdl)),
-            m_hdl=mean(hdl, na.rm=T),
-            sd_hdl=sd(hdl, na.rm=T)) %>%
-  ungroup() %>%
-  unite(grp, c(smoking, sex)) %>%
-  pivot_longer(-grp) %>%
-  mutate(value=round(value, 3)) %>%
-  pivot_wider(names_from="grp")
-  
-covar_s <- etabm305_phe3 %>%
-  ungroup() %>%
-  mutate(hdl=as.numeric(hdl)) %>%
-  group_by(smoking) %>%
-  summarize(n=n(),
-            m_age=mean(age, na.rm=T),
-            sd_age=sd(age, na.rm=T),
-            missing_hdl=sum(is.na(hdl)),
-            m_hdl=mean(hdl, na.rm=T),
-            sd_hdl=sd(hdl, na.rm=T)) %>%
-  ungroup() %>%
-  pivot_longer(-smoking) %>%
-  mutate(value=round(value, 3)) %>%
-  pivot_wider(names_from="smoking")
 
-covar_blood <- left_join(covar_s, covar_ss) 
-covar_blood %>%
-  write_csv("data/lymphocyte_covar.csv")
-
-# sex - smoking
-table(etabm305_phe3$sex, etabm305_phe3$smoking)
-chisq.test(table(etabm305_phe3$sex, etabm305_phe3$smoking)) # p = 7 x 10^-14
-prop.test(c(601, 120), c(601+321, 120+177)) # .. same
-
-# age - sex, smoking
-t.test(etabm305_phe3$age[etabm305_phe3$sex=="female"], 
-       etabm305_phe3$age[etabm305_phe3$sex=="male"]) # p=0.2615
-
-t.test(etabm305_phe3$age[etabm305_phe3$smoking=="non-smoker"], 
-       etabm305_phe3$age[etabm305_phe3$smoking=="smoker"]) # p=0.919
-
-# hdl - sex, smoking, missing
-present_hdl  <- etabm305_phe3 %>%
-  mutate(hdl=as.numeric(hdl)) %>%
-  filter(!is.na(hdl)) 
-t.test(present_hdl$hdl[present_hdl$sex=="female"], 
-       present_hdl$hdl[present_hdl$sex=="male"]) # p=0.23
-
-t.test(present_hdl$hdl[present_hdl$smoking=="non-smoker"], 
-       present_hdl$hdl[present_hdl$smoking=="smoker"]) # p=0.82
-
-chisq.test(table(is.na(as.numeric(etabm305_phe3$hdl)), etabm305_phe3$sex)) # 0.56
-# 0.56
 
 etabm305_expr <- vroom("data/etabm305/E-TABM-305-processed-data-1770937661.txt")
 colnames(etabm305_expr) <- str_replace_all(colnames(etabm305_expr), "Hybridization_individual ", "")

@@ -17,6 +17,8 @@
 
 library(mice)
 library(tidyverse)
+library(limma)
+library(data.table)
 
 # create an object:
 #  expr, pdat, list_pvars, coef, my_vars
@@ -67,10 +69,17 @@ extract_var <- function(pdat_imp, expr, list_pvars, coef_str,  out_var){
     mutate(probe:={{out_var}})
 }
 
+
 extract_top_var <- function(pdat_imp, expr, list_pvars, coef_str, my_l){
-  data.frame(do.call(rbind,
-                     lapply(my_l, function(x) 
+  data.frame(rbindlist(lapply(my_l, function(x) 
                        extract_var(pdat_imp, expr, list_pvars, coef_str, x) )
+  ))
+}
+
+
+extract_all_var <- function(pdat_imp, expr, list_pvars, coef_str){
+  data.frame(rbindlist(lapply(rownames(expr), function(x) 
+    extract_var(pdat_imp, expr, list_pvars, coef_str, x) )
   ))
 }
 
