@@ -140,13 +140,18 @@ save(smok_int_gse7895, smok_gse7895, ma_int_gse7895, ma_smok_gse7895,
      file="data/results/gse7895_out.RData")
 
 load("data/results/gse7895_out.RData")
-ma_smok_gse7895 %>% filter(gene %in% ae_de_gene$gene) %>%
-  inner_join(ae_de_gene, by="gene") %>%
+ae_rep <- ma_smok_gse7895 %>% filter(gene %in% ae_de_gene$gene) %>%
+  inner_join(ae_de_gene, by="gene") 
+ae_rep %>%
   filter(logFC.x*logFC.y > 0, p.x < 0.05)
 
-ma_int_gse7895 %>% filter(gene %in% ae_de_gene_i$gene) %>%
-  inner_join(ae_de_gene_i, by="gene") %>%
+cor.test(ae_rep$logFC.x, ae_rep$logFC.y) # 63.0
+ae_rep_int <- ma_int_gse7895 %>% filter(gene %in% ae_de_gene_i$gene) %>% 
+  inner_join(ae_de_gene_i, by="gene")
+ae_rep_int %>%
   filter(logFC.x*logFC.y > 0, p.x < 0.05)
+
+cor.test(ae_rep_int$logFC.x, ae_rep_int$logFC.y) # -0.04, p=0.855
 
 # compare smok
 valid_smok <- ma_smok_gse7895 %>% filter(gene %in% disc_smok$gene) %>% 

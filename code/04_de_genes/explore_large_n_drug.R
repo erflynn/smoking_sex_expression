@@ -73,6 +73,7 @@ topTable(fit, coef="sexMale") # there should be some stuff here??
 
 # ----- GSE10846 - rituximab ----- #
 # (GSE31312 is also rituximab)
+library('GEOquery')
 gse10846 <- getGEO("GSE10846")
 pData(gse10846[[1]]) %>% fct_summ()
 pDat2 <- pData(gse10846[[1]]) %>%
@@ -89,10 +90,12 @@ pDat2 <- pData(gse10846[[1]]) %>%
 
 pDat2.1 <- pDat2 %>% filter(Gender!="NA") %>% mutate(Gender=as.factor(Gender)) %>%
   mutate(across(c(Age, `Number of extranodal sites`, `LDH ratio`, 
-                  `ECOG performance status`, `Stage`), as.numeric))
+                  `ECOG performance status`, `Stage`), as.numeric)) %>%
+  distinct() %>%
+  filter(!is.na(Stage))
 pDat2.1 %>% group_by(Gender, Chemotherapy) %>% count()
 eDat2 <- exprs(gse10846[[1]])[,pDat2.1$geo_accession]
-design <- model.matrix(~Gender+Stage+Chemotherapy+Gender:Chemotherapy+Age,
+design2 <- model.matrix(~Gender+Stage+Chemotherapy+Gender:Chemotherapy+Age,
                        data=pDat2.1) # model
 summ_df <- pDat2.1 %>% group_by(Gender) %>%
   summarize(Age=mean(Age,na.rm=T), 
@@ -143,11 +146,18 @@ test_categorical(pDat2.1, Chemotherapy)
 
 # TODO - try from RAW data
 boxplot(eDat2[,1:10]) # do we need to log transform? looks normalized but maybe overly so
-fit <- lmFit(eDat2, design)
+fit <- lmFit(eDat2, design2)
 fit <- eBayes(fit)
 colnames(fit$coefficients)
-tt_int = topTable(fit, coef="Gendermale:ChemotherapyR-CHOP-Like Regimen", n=nrow(eDat2))
-topTable(fit, coef="Gendermale:ChemotherapyR-CHOP-Like Regimen", n=nrow(eDat2)) %>% 
+tt_int = data.frame(topTable(fit, coef="Gendermale:ChemotherapyR-CHOP-Like Regimen", 
+                  n=nrow(eDat2)))
+tt_int$probes <- rownames(tt_int)
+tt_int %>% filter(adj.P.Val < 0.10)  %>% left_join(probe_gene)
+
+load("ref/gpl570_probe_gene.RData")
+
+topTable(fit, coef="Gendermale:ChemotherapyR-CHOP-Like Regimen", 
+         n=nrow(eDat2)) %>% 
   add_gene() %>% anti_join(tt_sex, by="probes") 
 tt_sex = topTable(fit, coef="Gendermale",  n=nrow(eDat2))   %>% 
   filter(adj.P.Val < 0.05) %>% add_gene()
@@ -182,3 +192,21 @@ save(gene_mapped, file="data/gene_mapped_ritux.RData")
 
 #gse100833 <- getGEO("GSE100833")
 
+
+# ------ next study ------- #
+gse_usket <- getGEO("GSE100833")
+eDat <- exprs(gse_usket$GSE100833_series_matrix.txt.gz)
+pDat <- pData(gse_usket$GSE100833_series_matrix.txt.gz)
+
+# title, source_name_ch1, 
+pDat2 <- pDat %>% select(geo_accession,contains("characteristics_ch1")) %>%
+  pivot_longer(-geo_accession) %>%
+  separate(value, into=c("column", "value"), sep=": ") %>%
+  mutate(column=tolower(column)) %>%
+  mutate(column=ifelse(str_detect(column, "age"), "age", column)) %>%
+  filter(column != "") %>%
+  select(-name) %>%
+  pivot_wider(names_from=column, values_from=value)
+
+fct_summ(pDat2)
+# so many different trt grps

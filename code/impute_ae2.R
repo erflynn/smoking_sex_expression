@@ -20,11 +20,16 @@ ggplot(ae_pcs2,
   geom_point(alpha=0.5)+
   theme_bw()
 ggsave("figures/ae_date_pc.png")
-ggplot(blood_pcs2, 
-       aes(x=PC1, y=PC2, col=hdl))+
+
+
+ae_pcs2 <- ae_pcs2 %>% left_join(date_convert, by="submission_date")  %>%
+  mutate(new_date=as.factor(new_date))
+
+ggplot(ae_pcs2, 
+       aes(x=PC1, y=PC2, col=new_date))+
   geom_point(alpha=0.5)+
   theme_bw()
-
+ggsave("figures/ae_date_grp.png")
 
 # use the completed data to select variables for the remainder
 pDat5.1 <- pDat5 %>% 
@@ -211,4 +216,21 @@ save(ma_smok, ma_sex, smok_ci_smok, smok_ci_sex, file="data/results/ae_smok.RDat
 
 # ---- summarize with meta-analysis ---- #
 
+load("data/ae_full_exp.RData") # pDat5.1, expDat5
 
+slc_probes <- probe_gene %>% 
+  filter(gene=="SLC25A37") %>%
+  pull(probes)
+slc2 <- expDat5[slc_probes,]
+df <- tibble("geo_accession"=colnames(expDat5),
+       "expr"=unlist(colMeans(slc2))) %>%
+  left_join(pDat5.1 %>% dplyr::select(geo_accession, sex, smoking))
+head(df)
+df %>%
+  mutate(smoking=ifelse(smoking=="NS", "non-smoker", "smoker")) %>%
+  ggplot(aes(x=smoking, col=sex, y=expr))+
+  geom_boxplot()+
+  geom_point(alpha=0.5, position=position_jitterdodge())+
+  theme_bw()+
+  ylab("SLC25A37 expression (log-scale)")+
+  xlab("")

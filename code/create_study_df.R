@@ -23,6 +23,17 @@ fix_colnames_ds <- function(ds){
 }
 all_studies <- lapply(all_studies, fix_colnames_ds)
 names(all_studies) <-  lapply(all_studies, function(x) x$study)
+
+# all_studies[["GSE20189"]]$gene_int %>% 
+#   filter(gene %in% c("NMOX1", "TAGLN", "SYNE1", "LGR6", "EPS8",
+#                      "RGS9", "MYOF", "ZNF618", "RARRES3", "TCFL2",
+#                      "CHD1L", "TMEM106C", "PLIN5", "TGFBR3", "CSF1R",
+#                      "PPP2R2B", "PLCD4", "LOXL3", "BFSP1"))
+# all_studies[["GSE46699"]]$gene_int %>% 
+#   filter(gene %in% c("NMOX1", "TAGLN", "SYNE1", "LGR6", "EPS8",
+#                      "RGS9", "MYOF", "ZNF618", "RARRES3", "TCFL2",
+#                      "CHD1L", "TMEM106C", "PLIN5", "TGFBR3", "CSF1R",
+#                      "PPP2R2B", "PLCD4", "LOXL3", "BFSP1"))
 # table info:
 # study, prop_var_smok, prop_var_sex, prop_var_int, # de probes, # de genes, # de probes int, # de genes int
 
@@ -68,6 +79,26 @@ table_ds <- function(ds){
               num_de_genes, num_de_probes_int, num_de_genes_int))
 }
 
+
+# DE GENES
+
+gene_lists <- function(ds){
+  sig_gene <- ds$gene_smok %>%
+    filter(abs(logFC) >= 0.3 & adj.p < 0.05 )
+  
+  if (!is.na(ds$gene_int)){
+    sig_int <- ds$gene_int %>%
+      filter(abs(logFC) >= 0.3 & adj.p < 0.05 )
+  } else {
+    sig_int <- NA
+  }
+ return(list("sig_gene"=sig_gene, "sig_int"=sig_int))
+}
+
+my_gene_l <- lapply(all_studies, gene_lists)
+names(my_gene_l) <- names(all_studies)
+
+
 my_tab <- do.call(rbind, lapply(all_studies, table_ds))
 data_df <- data.frame(my_tab)
 colnames(data_df) <- c("study",  "var_smok", "var_sex", "var_int", 
@@ -78,7 +109,6 @@ data_df2 <- data_df %>%
   as_tibble() %>%
   mutate(study=unlist(study))
 list_studies <- read_csv("data/supp_tables/s4_list_smok_studies_formatted.csv")
-
 list_studies <- list_studies %>% mutate(
   tissue=case_when(
     tissue == "pbmc" ~ "blood - pbmc",
@@ -207,6 +237,9 @@ gene_smok_ae <- ma_smok %>%
 # overlap + correlation of ES?
 ae_de_probe <- probe_smok_ae %>% 
   filter(abs(logFC) >= 0.3 & adj.P.Val < 0.05 ) # 2625
+
+ae_de_gene <- gene_smok_ae %>%
+  filter(abs(logFC) >= 0.3 & adj.p < 0.05 )
 # 932
 
 ae_de_probe_i <- probe_int_ae %>% 
@@ -248,7 +281,9 @@ get_pair_overlap <- function(ds1, study1, ds2, study2){
   same_dir <- overlap %>% filter(logFC.x*logFC.y > 0) # 345/702
   rep_sig <- same_dir %>% filter(p.x < 0.05/nrow(overlap) & p.y < 0.05/nrow(overlap))
   return(list("study1"=study1, "study2"=study2, "tot"=nrow(overlap), "cor"=cor, "cor.p"=corp,
-              "same_dir"=nrow(same_dir), "rep_sig"=nrow(rep_sig)))
+              "same_dir"=nrow(same_dir), "rep_sig"=nrow(rep_sig), 
+              "genes"=paste(rep_sig$gene, collapse=";"),
+              "gene_es"=paste(round(rep_sig$logFC.x,3), collapse=";")))
 }
 
 
@@ -260,17 +295,35 @@ res <- lapply(all_studies, function(x) get_pair_overlap(x$gene_smok,
 ae_overlap <- data.table::rbindlist(res)
 ae_overlap_df <- ae_overlap %>%
   dplyr::select(-study2) %>%
-  mutate(across(-study1, ~as.numeric(as.character(.)))) %>%
+  mutate(across(c(-study1,-genes), ~as.numeric(as.character(.)))) %>%
   mutate(study=unlist(study1)) %>%
   mutate(across(contains("cor"), ~signif(., 3))) %>%
   left_join(list_studies %>% dplyr::select(study, tissue, platform)) %>%
   dplyr::select(study, tissue, platform, everything()) %>%
   arrange(tissue, study)
-ae_overlap_df %>%
+ae_overlap_df %>% 
   #mutate(same_dir=round(same_dir/tot, digits=3)) %>%
   #dplyr::select(-cor.p) %>%
   write_csv("data/supp_tables/ae_overlap_results_smok.csv")
 
+
+count_ae_overlap2 <- ae_overlap_df %>% 
+  select(study, tissue, genes) %>%
+  mutate(tissue=ifelse(tissue=="bronchial epithelium", "airway epithelium", tissue)) %>%
+  as_tibble() %>%
+  filter(genes!="") %>%
+  separate_rows(genes, sep=";") %>%
+  group_by(genes) %>%
+  summarize(tissue=paste(unique(tissue), collapse=";"),
+            study=paste(study, collapse=";"),
+            n=n()) %>%
+  arrange(desc(n)) %>%
+  filter(n>1)
+
+count_ae_overlap2 %>% rename(gene=genes, nstudies=n) %>%
+  left_join(gene_smok_ae, by="gene") %>% 
+  select( -src, -p, -logFC.l, -logFC.u) %>% 
+  write_csv("data/supp_tables/ae_overlap2.csv")
 # make a correlation plot
 
 all_pairs <- combn(names(all_studies),2)
@@ -283,6 +336,37 @@ all_pair_overlap <- apply(all_pairs, 2, function(x) {
 })
 
 all_pair_df <- data.table::rbindlist(all_pair_overlap)
+all_pair_overlap_g <- all_pair_df %>% filter(genes!="") %>% 
+  select(study1, study2, genes, gene_es) %>%
+  as_tibble() %>%
+  separate_rows(genes, sep=";") %>%
+  group_by(study1, study2) %>%
+  mutate(n=1:n()) %>%
+  group_by(study1, study2, n) %>%
+  mutate(gene_effect=as.numeric(str_split(gene_es, ";")[[1]][[n]])) %>%
+  ungroup() %>%
+  select(-gene_es, -n) %>%
+  rename(gene=genes) %>%
+  mutate(direction=ifelse(gene_effect < 0, "down", "up")) %>%
+  select(-gene_effect)
+
+
+all_pair_overlap_g2 <- all_pair_overlap_g %>% 
+  select(study1, study2, direction, gene) %>%
+  pivot_longer(c(study1, study2), values_to="study") %>%
+  select(-name) %>%
+  left_join(list_studies %>% select(study, tissue), by="study") %>%
+  mutate(tissue=ifelse(tissue=="bronchial epithelium", "airway epithelium", tissue)) %>%
+  distinct(gene, direction, study, tissue) %>%
+  group_by(gene, direction) %>%
+  summarize(studies=paste(unique(study), collapse=";"),
+            tissues=paste(unique(tissue), collapse=";"),
+            n=n()) %>%
+  arrange(desc(n))
+
+all_pair_overlap_g2 %>%
+  write_csv("data/supp_tables/overlapping_genes.csv")  
+  
 full_pair <- ae_overlap %>% 
   dplyr::select(-study2) %>%
   dplyr::rename(study2=study1)  %>%
@@ -459,6 +543,8 @@ int_overlap_df %>%
   mutate(same_dir=round(same_dir/tot, digits=3)) %>%
   dplyr::select(-cor.p, -study1) %>%
   write_csv("data/supp_tables/ae_int_overlap_results_smok.csv")
+
+int_overlap_df
 
 # [x] pairwise correlation?
 # - is correlation associated with platform
@@ -661,4 +747,72 @@ ggplot(am_plot_dat, aes(y=ID, x=gene, fill=logFC))+
   xlab("")+
   ylab("")
 ggsave("figures/paper_figs/am_meta_heatmap.png")
+
+
+# grab a single gene
+# AKR1C3
+
+# -->
+#  sample | expr | smoking_status 
+get_gene <- function(ds, gene_name){
+  load(sprintf("data/small_studies/%s.RData", ds))
+  df <- gse$originalData[[1]]
+  vals = df$expr[which(df$keys==gene_name),]
+  if (is.null(dim(vals))) {
+    val_df = tibble("sample_acc"=names(vals),
+                    "expr"=unlist(vals))
+  } else {
+    val_df = data.frame(t(vals))
+    val_df$sample_acc = colnames(vals)
+    
+  }
+  phe = read_csv(sprintf("data/pdata_filt/%s.csv", tolower(ds)))
+  val_phe = val_df %>% left_join(phe)
+  return(val_phe)
+}
+
+my_studies <- c('GSE103174',
+                'GSE13896','GSE16149','GSE17913','GSE18723','GSE19027',
+                'GSE20189','GSE2125','GSE21862','GSE31210','GSE32539',
+                'GSE42057','GSE42743','GSE4302','GSE44456','GSE46699',
+                'GSE55962','GSE56768',
+                'GSE7895','GSE87072', 'GSE8987','GSE994')
+
+list_val_phe = lapply(my_studies, function(x) get_gene(x, "AKR1C3"))
+save(list_val_phe, file="data/akr1c3_vals.RData")
+
+
+load("data/akr1c3_vals.RData")
+
+
+lapply(list_val_phe, function(x) "expr" %in% colnames(x))
+list_val_phe[[17]] <- list_val_phe[[17]] %>% rename("expr"=X11715711_a_at)
+
+df <- data.table::rbindlist(lapply(list_val_phe, function(x) x %>% select(study_acc, sample_acc, expr, smok, sex_lab)))
+df2 <- df %>% filter(smok %in% c("NS", "S"))
+df3 <- df2 %>% left_join(list_studies %>% select(study, tissue), by=c("study_acc"="study"))
+df3 %>% filter(str_detect(tissue, "airway") | 
+                 str_detect(tissue, "trachea") |
+                 str_detect(tissue, "blood")) %>%
+  filter(!str_detect(tissue, "b cell")) %>%
+  mutate(tissue2=ifelse(str_detect(tissue, "epithelium"), "airway", "blood")) %>%
+  rename(smoking=smok) %>%
+  ggplot(aes(x=study_acc, y=expr, col=smoking))+
+  geom_violin()+
+  geom_boxplot(width=0.2, position=position_dodge(0.9), outlier.shape=NA, coef = 0)+
+  facet_grid(.~tissue2, scales="free")+
+  theme_bw()+
+  xlab("")+
+  ylab("expression of AKR1C3")+
+  theme(axis.text.x = element_text(angle = 90, hjust=1))
+# add tissue labels
+ggsave("figures/paper_figs/akr1c3.png")
+
+#df3 %>% ggplot(aes(x=study_acc, y=expr, col=smok))+
+#  geom_boxplot()+
+#  facet_grid(.~tissue, scales="free")+
+#  theme_bw()+
+#  xlab("")+
+#  ylab("expression of AKR1C3")+
+#  theme(axis.text.x = element_text(angle = 90, hjust=1))
 

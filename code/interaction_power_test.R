@@ -20,11 +20,16 @@ pwr.r.test(r=0.2,sig.level = 0.05,power = 0.8)
 # FDR
 
 library("ssize.fdr")
+load("data/ae_full_exp.RData") # expDat5, pDat5
+sd_row <- apply(expDat5, 1, sd)
+summary(sd_row)
+
+
 d<-1 ##effect size
 s<-0.6   ##standard deviation
 a<-0.05 ##false discovery rate to be controlled
 pwr<-0.8 ##desired power
-p0<-c(0.5,0.9,0.95, 0.99) ##proportions of non-differentially expressed genes
+p0<-c(0.5,0.9,0.95, 0.99, 0.999) ##proportions of non-differentially expressed genes
 N<-30 ##maximum sample size for calculations
 os<-ssize.oneSamp(delta=d,sigma=s,fdr=a,power=pwr,
                   pi0=p0,maxN=N,side="two-sided")
@@ -43,7 +48,7 @@ s<-0.6   #residual std deviation of linear model x sqrt(3/4)
 # sqrt(3)/2: assumes balanced
 a<-0.05 ##false discovery rate to be controlled
 pwr<-0.8 ##desired power
-p0<-c(0.5,0.9,0.95, 0.99) ##proportions of non-differentially expressed genes
+p0<-c(0.5,0.9,0.95, 0.99, 0.999) ##proportions of non-differentially expressed genes
 N<-1000 ##maximum sample size for calculations
 os<-ssize.oneSamp(delta=d,sigma=s,fdr=a,power=pwr,
                   pi0=p0,maxN=N,side="two-sided")

@@ -18,7 +18,8 @@ run_tt <- function(imp_data, expr, coef_str, my_model, ...){
 }
 
 extract_tt <- function(pdat_imp, expr, list_pvars, coef_str, ...){
-  my_model <- paste("~", paste(list_pvars, collapse=" + "))
+  #my_model <- paste("~", paste(list_pvars, collapse=" + "))
+  my_model <- "~ ."
   comb_res <- lapply(1:pdat_imp$m, function(x) { 
     df <- run_tt(imp_data=complete(pdat_imp, x), 
                  expr=expr, coef_str=coef_str, my_model=my_model, ...); 
@@ -30,9 +31,10 @@ extract_tt <- function(pdat_imp, expr, list_pvars, coef_str, ...){
 
 extract_var <- function(pdat_imp, expr, list_pvars, coef_str,  out_var){
   # select top variables
+ # my_mod <-  #as.formula(paste("y", paste(list_pvars, collapse="+"), sep="~") )
   y = unlist(expr[out_var,]) 
   mipo <-pool(with(data=pdat_imp, 
-                   lm(as.formula(paste("y", paste(list_pvars, collapse="+"), sep="~") ))))
+                   lm(as.formula(paste("y", paste(colnames(pdat_imp[[1]]), collapse="+"), sep="~")))))
   my_summ <- as.tibble(summary(mipo))
   comb_summ <- my_summ %>% 
     left_join(as.tibble(mipo$pooled) %>% dplyr::select(-estimate, -df), by="term")
@@ -45,22 +47,22 @@ extract_var <- function(pdat_imp, expr, list_pvars, coef_str,  out_var){
 extract_var2 <- function(pdat_imp, y, my_mod,  out_var){
   # select top variables
   mipo <-pool(with(data=pdat_imp, 
-                   lm(my_mod)))
-  return(mipo)
+                   lm(as.formula(paste("y", paste(colnames(pdat_imp[[1]]), collapse="+"), sep="~")))))
+  return(summary(mipo, "all") %>% mutate(probe=out_var))
 }
 
 
 extract_top_var <- function(pdat_imp, expr, list_pvars, coef_str, my_l){
-  data.frame(rbindlist(lapply(my_l, function(x) 
+  data.frame(data.table::rbindlist(lapply(my_l, function(x) 
     extract_var(pdat_imp, expr, list_pvars, coef_str, x) )
   ))
 }
 
 
 extract_all_var <- function(pdat_imp, expr, list_pvars){
-  my_mod <- as.formula(paste("y", paste(list_pvars, collapse="+"), sep="~") )
-  apply(expr, 2, function(x) 
-    extract_var2(pdat_imp, unlist(x), my_mod) )
+  my_mod <- "y ~ ." #paste("y", paste(colnames(pdat_imp[[1]]), collapse="+"), sep="~") 
+  lapply(rownames(expr), function(x) 
+    extract_var2(pdat_imp, unlist(expr[x,]), "", x) )
 }
 
 load("data/ae_full_exp.RData") # expDat5, pDat5
@@ -80,7 +82,7 @@ complete_pDat <- pDat5.1 %>%
 exp_rot <- t(expDat5[,complete_pDat$geo_accession])
 
 
-select_probes <- function(pDat, exp, var, covars, multinomial=F, ...){
+select_probes <- function(pDat, exp, var, covars, max_probes, multinomial=F, ...){
   
   Y <- pDat %>% pull(var)
   mod_mat <- model.matrix(~.-1, pDat %>% dplyr::select({{covars}}))
@@ -98,9 +100,12 @@ select_probes <- function(pDat, exp, var, covars, multinomial=F, ...){
   }
   mat_coef <- coef_l %>% as.matrix()
   nonzero_coef <- mat_coef[mat_coef[,1]!=0,]
+  probes <- nonzero_coef[str_detect(names(nonzero_coef), "_at")]
   print(nonzero_coef)
-  my_probes <- names(nonzero_coef)[str_detect(names(nonzero_coef), "_at")]
-  return(my_probes)
+  if (length(probes) > max_probes){
+    probes = sort(desc(abs(probes)))[1:max_probes]
+  }
+  return(names(probes))
 }
 
 set.seed(414)
