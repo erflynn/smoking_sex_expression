@@ -33,17 +33,7 @@ pDat <- pDat0 %>%
 
 eDat <- eDat0[,pDat$sample_acc]
 
-add_annot_mi <- function(df, platform){
-  df2 <- data.frame(df  )
-  df2$probes <- rownames(df2)
-  load(sprintf("ref/%s_probe_gene.RData", tolower(platform))) #probe_gene
-  df3 <-df2 %>% left_join(probe_gene, by="probes")
-  unmapped <- df3 %>% filter(is.na(gene)) %>% nrow()
-  nmulti <- df3 %>% filter(str_detect(gene, ",")) %>% nrow()
-  print(sprintf("%s probes did not map out of %s; %s multi-mapped.", 
-                unmapped, nrow(df3), nmulti))
-  return(df3)
-}
+
 
 # ------  smoking model ------- #
 if (length(unique(pDat$sex))==1){

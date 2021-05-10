@@ -61,21 +61,7 @@ select_probes <- function(pDat, exp, var, covars, max_probes, multinomial=F, ...
   return(names(probes))
 }
 
-# do with correlation/chisq
-select_probes2 <- function(pDat, eDat, max_probes, var){
-  
-  design2 <- model.matrix(~ .-1, data=pDat)
-  fit <- lmFit(eDat, design2)
-  fit <- eBayes(fit)
-  coefs <- colnames(coef(fit))
-  list_probes <- lapply(coefs[str_detect(coefs, var)], 
-         function(coef_str){
-           tt <- data.frame(topTable(fit=fit, coef=coef_str, number=max_probes))
-           return(rownames(tt))
-         })
-  return(unique(unlist(list_probes)))
-}
-  #pDat_cov <- complete_pDat0$age
+#pDat_cov <- complete_pDat0$age
   # if (var_type=="numeric"){
   #   cor_list <- apply(complete_eDat0, 1, function(x) cor(x, pDat_cov))
   #   cor_srt <- sort(abs(cor_list), decreasing=T)
@@ -193,15 +179,14 @@ test_impute <- function(run_id, complete_pDat, complete_eDat, fraction_miss,
   exp_rot <- t(complete_eDat0)
   list_probes <- c()
   # add missingness to complete1
-  num_miss <- length(vars_miss)
+  num_miss <- length(vars_miss) #### THIS IS WRONG!
   
   if ("age" %in% vars_miss){
     age_probes <- select_probes( pDat=complete_pDat0 %>%
                                    mutate(age=scale(age)), 
                                  exp=exp_rot, 
                                  var="age", 
-                                 covars=c("sex", "smoking", 
-                                          "race_ethnicity", "pack_years", "submission_date"), 
+                                 covars=c("sex", "smoking", "submission_date"), 
                                  max_probes=15,
                                  alpha=0.5, 
                                  family="gaussian")
@@ -216,13 +201,13 @@ test_impute <- function(run_id, complete_pDat, complete_eDat, fraction_miss,
                                      mutate(pack_years=scale(pack_years)), 
                                    exp=exp_rot[smokers$geo_accession,],
                                    var="pack_years", 
-                                   covars=c("sex",  "race_ethnicity", "age", 
+                                   covars=c("sex",   "age", 
                                             "submission_date"),  
                                    max_probes=15,
                                    alpha=0.5, 
                                    family="gaussian")
     list_probes <- c(list_probes, pkyrs_probes)
-    miss_idx <- sample(1:nrow(complete_pDat1), floor(1/num_miss))
+    miss_idx <- sample(1:nrow(complete_pDat1), floor(1/num_miss)) 
     complete_pDat1$pack_years[miss_idx] <- NA
   }
 
@@ -233,8 +218,7 @@ test_impute <- function(run_id, complete_pDat, complete_eDat, fraction_miss,
     re_probes <- select_probes( pDat=race_eth2, 
                                 exp=exp_rot[race_eth2$geo_accession,], 
                                 var="race_ethnicity", 
-                                covars=c("sex", "smoking", "pack_years", 
-                                         "age", "submission_date"), 
+                                covars=c("sex", "smoking", "submission_date"), 
                                 max_probes=15,
                                 multinomial=T,
                                 alpha=0.5, 

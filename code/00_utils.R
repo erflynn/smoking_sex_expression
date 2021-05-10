@@ -91,7 +91,8 @@ run_clean_ma <- function(df){
     return(df2)
   }
   ma_vals <- lapply(multi_probe_gene, ma_probes_genes)
-  mult_gene_df <- data.frame(apply(data.table::rbindlist(ma_vals) , c(1,2), unlist)) %>%
+  mult_gene_df <- data.frame(apply(data.table::rbindlist(ma_vals), 
+                                   c(1,2), unlist)) %>%
     mutate(across(c(contains("logFC"), p), ~as.numeric(as.character(.)) )) %>%
     mutate(n=as.numeric(as.character(n)))
   comb_ma_dat <- df2 %>% filter(n==1) %>% 
@@ -127,6 +128,18 @@ plotPC3 <- function(df, my_col){
 
 
 # --- code for converting to hgnc --- #
+
+grab_chr <- function(df){
+   
+      library('biomaRt')
+      mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+      chr_map <- getBM(attributes = c("hgnc_symbol",
+                                            "chromosome_name"),
+                             filters = "hgnc_symbol", values =unique(df$gene) ,
+                             mart=mart)
+    return(chr_map)
+}
+
 
 load_genes <- function(list_genes, my_f, id_type){
   stopifnot(id_type %in% c("entrezgene_id", "ensembl_gene_id"))
@@ -272,17 +285,22 @@ get_pvca <- function(expr_pcs_t, phe, form, props, cutoff=0.8){
   return( colSums(varPart*props)/cutoff)
 }
 
+is.error <- function(x) inherits(x, "try-error")
+
+
 rand_pvca1 <- function(expr_pcs_t, phe, form, props, cutoff=0.8){
   phe2 <- phe
   phe2$sex <- sample(phe$sex, nrow(phe2), replace=F)
   phe2$smoking <- sample(phe$smoking, nrow(phe2), replace=F)
-  return(get_pvca(expr_pcs_t, phe2, form, props, cutoff))
+  return(try(get_pvca(expr_pcs_t, phe2, form, props, cutoff)))
 }
 
 rand_pvca <- function(n, expr_pcs_t, phe, form, props, cutoff=0.8){
   res <- lapply(1:n,  function(i) 
-    rand_pvca1(expr_pcs_t, phe, form, props, cutoff))
-  df <- do.call(cbind, lapply(res[!is.na(res)], data.frame)) 
+    rand_pvca1(expr_pcs_t, phe, form, props, my_var, cutoff))
+  succeeded <- !vapply(res, is.error, logical(1))
+  
+  df <- do.call(cbind, lapply(res[succeeded], data.frame)) 
   data.frame(t(df) )  %>% 
     as_tibble() %>%
     mutate(n=1:n()) %>%
@@ -305,4 +323,15 @@ plot_pvca_rand <- function(est_var, rand_var){
     xlab("")+
     scale_color_manual(values=c("red", "black"))+
     theme(legend.position = "None")
+}
+add_annot_mi <- function(df, platform){
+  df2 <- data.frame(df  )
+  df2$probes <- rownames(df2)
+  load(sprintf("ref/%s_probe_gene.RData", tolower(platform))) #probe_gene
+  df3 <-df2 %>% left_join(probe_gene, by="probes")
+  unmapped <- df3 %>% filter(is.na(gene)) %>% nrow()
+  nmulti <- df3 %>% filter(str_detect(gene, ",")) %>% nrow()
+  print(sprintf("%s probes did not map out of %s; %s multi-mapped.", 
+                unmapped, nrow(df3), nmulti))
+  return(df3)
 }

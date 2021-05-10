@@ -19,6 +19,7 @@ l2 %>% group_by(platform) %>% count()
 plats <- l2 %>% distinct(platform) %>% pull(platform)
 
 # "GPL13667" "GPL570"   "GPL96"    "GPL571"   "GPL6104"  "GPL6244" 
+# GPL6104 - Illumina
 library('GEOmetadb')
 con <- dbConnect(SQLite(), "../GEOmetadb.sqlite")
 plat_d <- dbGetQuery(con, sprintf("SELECT * FROM gpl WHERE gpl IN ('%s');",
