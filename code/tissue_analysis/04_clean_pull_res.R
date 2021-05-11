@@ -78,6 +78,7 @@ names(all_studies2) <- names(all_studies)
 save(all_studies2, file="data/all_studies_v2_clean.RData") 
 
 
+
 # all_studies[["GSE20189"]]$gene_int %>% 
 #   filter(gene %in% c("NMOX1", "TAGLN", "SYNE1", "LGR6", "EPS8",
 #                      "RGS9", "MYOF", "ZNF618", "RARRES3", "TCFL2",
@@ -244,9 +245,49 @@ data_df4 <- data_df3 %>% mutate(var_smok_p=smok_n_g/smok_n,
 
 data_df4 %>% write_csv("data/supp_tables/small_study_summary_v2.csv")
 
+data_df4 <- read_csv("data/supp_tables/small_study_summary_v2.csv")
+data_df5 <- data_df4 %>%
+  select(study, tissue, var_smok, var_sex, var_int) %>%
+  pivot_longer(contains("var"), names_to = "term", values_to="variance") %>%
+  mutate(term=case_when(
+    term=="var_int" ~ "smoking*sex",
+    term=="var_sex" ~ "sex",
+    term=="var_smok" ~ "smoking"
+  )) %>%
+  filter(!is.na(term)) %>%
+  mutate(tissue=factor(tissue, tiss_levels)) %>%
+  arrange( tissue, study)
 
+data_df5$study <- factor(data_df5$study, unique(data_df5$study))
 
+ggplot(data_df5, 
+       aes(x=term, y=variance, col=term))+
+  geom_violin()+
+  geom_boxplot(width=0.2)+
+  geom_point(alpha=0.4, position=position_jitter(width=0.1))+
+  scale_color_manual(values=c("purple", "gold4", "lightblue4"))+
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "none")+
+  xlab("")+
+  ylab("proportion of variance")
+ggsave("figures/proportion_variance.pdf")
 
+ggplot(data_df5, aes(x=1, y=variance, fill=term)) +
+  geom_bar(stat="identity", position=position_dodge(0.8),
+           alpha=0.8)+
+  xlab("")+
+  theme_bw()+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major=element_blank())+
+  theme(axis.ticks.y=element_blank(), 
+        axis.text.y=element_blank())+
+  coord_flip()+
+  facet_grid(study~., switch="y")+
+  theme(strip.text.y.left = element_text(angle = 0))+
+  scale_fill_manual(values=c("purple", "gold4", "lightblue"))
+ggsave("figures/prop_var.pdf")
 ### TODO save these objects
 
 

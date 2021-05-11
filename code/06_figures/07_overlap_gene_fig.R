@@ -1,15 +1,27 @@
 
+# code for examining tissue specificity
+# calculates tau
+# plots figures with this information
+
+library('tidyverse')
+library('gridExtra')
+
+# set up colors #
 library(RColorBrewer)
 dark2 <- brewer.pal(8, "Dark2")
 set2 <- brewer.pal(8, "Set2")
 alluv_col <- c(dark2[1], set2[1], set2[4], set2[3], dark2[3], dark2[8])
-
-# make a figure that shows the overlapping genes
-library('tidyverse')
-library('gridExtra')
-load("data/all_studies_v2_clean.RData") # --> all_studies2
 load("data/fig_color_scale.RData") # --> paired3
 
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+# load general data 
+load("data/all_studies_v2_clean.RData") # --> all_studies2
 tiss_levels =c("airway epithelium", "trachea epithelium",
                "nasal epithelium", "oral cavity",
                "buccal mucosa", "sputum", "alveolar macrophages", 
@@ -28,6 +40,7 @@ list_studies2 <- list_studies %>%
   mutate(across(c(tissue, study), as.character)) %>%
   bind_rows(tibble("study"="Grouped AE", "tissue"="airway epithelium"))
 
+# ------- FUNCTIONS ------ #
 
 group_tissues <- function(df){
   df %>%
@@ -40,8 +53,30 @@ group_tissues <- function(df){
       tissue %in% c("liver", "brain - prefrontal cortex", "kidney") ~ "other")) 
 }
 
+calc_tau <- function(df, my_gene){
+  filt_df <- df %>% 
+    filter(gene==my_gene) %>% 
+    filter(!is.na(logFC))
+  
+  tiss_df0 <- filt_df %>% 
+    group_tissues() %>%
+    filter(tissue!="other")
+  # make sure at least two per group
+  tiss_df0.1 <- tiss_df0 %>% semi_join(tiss_df0 %>% 
+                                         group_by(tissue) %>% 
+                                         count() %>% filter(n>1))
+  tiss_df0.2 <- tiss_df0.1 %>%
+    group_by(tissue) %>%
+    summarize(medianLF=abs(median(logFC)), .groups="drop_last") # TODO take into acct direction?
+  
+  maxFC <- max(tiss_df0.2$medianLF) # max - 1?
+  if (nrow(tiss_df0.2) < 2){
+    return(NA)
+  }
+  tiss_df2 <- tiss_df0.2 %>% mutate(hat_xi=medianLF/maxFC) 
+  return(sum(1-tiss_df2$hat_xi)/(nrow(tiss_df2)-1))
+}
 
-### functions for plotting ###
 
 
 # function to get the list of genes
@@ -125,7 +160,8 @@ plot_olap_fig <- function(olap_genes, dn, up, my_height, tau_df){
     #scale_fill_gradient2(low = "turquoise", high = "gold4", mid = "white", 
     #                     midpoint = 0,  na.value="#DCDCDC")+
     theme(axis.title.x=element_blank(),
-          axis.title.y=element_blank())
+          axis.title.y=element_blank())+
+    coord_flip()
   
   
   p1 <- ggplot(olap_genes2)+
@@ -138,52 +174,48 @@ plot_olap_fig <- function(olap_genes, dn, up, my_height, tau_df){
                                       mutate(tissue=as.character(tissue)) %>%
                                       pull(tissue)])+
     theme_minimal()+
-    ylab("")+
-    xlab("")+
     theme(panel.grid.major=element_blank(),
-          axis.text.x = element_blank(),
+          axis.text.y = element_blank(),
           axis.ticks.x = element_blank(),
-          axis.text.y=element_text(colour="white"),
+          axis.text.x= element_text(angle = 90, hjust=1, vjust=0.5, color="white"),
           axis.ticks.y = element_blank(),
           axis.title.y=element_blank(),
-          legend.position = "none")
+          axis.title.x=element_blank())+
+    coord_flip()
   
-  
-  tmp <- ggplot_gtable(ggplot_build(p0))
-  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-  legend <- tmp$grobs[[leg]]
-  
-  p0.clean <- p0+theme(legend.position="none")
-  
-  
-  
+
   p3 <- ggplot(tau_df %>% 
            mutate(gene=factor(gene, levels=levels(olap_genes2$gene))), 
            aes(y=tau, x=gene, group=1))+
     theme_bw()+
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-          axis.text.y = element_blank(),
-          axis.ticks.y = element_blank(),
+          axis.text.x = element_blank(),
+          #axis.ticks.y = element_blank(),
           axis.ticks.x = element_blank(),
-          legend.position="none",
-          axis.text.x = element_text(angle = 90, hjust=1, vjust=0.5, 
-                                     color=c("white")))+
+          axis.text.y = element_text(color=c("black", "white", "black" ,"white", "black")))+
     #geom_segment(aes(xend=gene), yend=0, alpha=0.5) +   
     geom_line()+
     geom_point( aes(color=tau)) +
-    expand_limits(y=0) +
-    scale_y_reverse(
-      breaks=c(0,0.5,1),
-      labels=c(0, "E-MTAB-3604", 1))+
-    coord_flip()+
+    #expand_limits(y=0) +
+    scale_y_continuous(
+      limits=c(0,1),
+      breaks=c(0,0.25, 0.5, 0.75,1),
+      labels=c(0, 0.25, 0.5, "E-MTAB-3604", 1))+
     theme(axis.title.x=element_blank(), 
           axis.title.y=element_blank())
+  p0.legend <- get_legend(p0) 
+  p0.clean <- p0+theme(legend.position="none")
+  p1.clean <-  p1+theme(legend.position="none")
+  p3.clean <-  p3+theme(legend.position="none")
+  p1.legend <-get_legend(p1) 
+  p3.legend <- get_legend(p3) 
   
-  
-  grid.arrange(p3, p0.clean, p1,
-               heights=c(100,my_height), widths=c(1,4.5), 
-               layout_matrix=rbind(c(1,2), c(4, 3)))
+  legend_plot <- arrangeGrob(p0.legend, p1.legend, p3.legend, 
+                             layout_matrix = rbind(c(1,3), c(2,2)) )
+  grid.arrange(p1.clean, p0.clean, p3.clean, legend_plot,
+               heights=c(5, 1), widths=c(my_height, 100, 20), 
+               layout_matrix=rbind(c(1,2, 4), c(5, 3, 6)))
 }
 
 
@@ -206,18 +238,43 @@ gene_sex_ae <- ma_sex %>%
   dplyr::select(-chromosome)
 
 
-
-
 # 1. smoking
 smok_dfs <- lapply(all_studies2, function(x) x$gene_smok)
 names(smok_dfs) <- names(all_studies2)
 smok_dfs2 <- c(smok_dfs[!names(smok_dfs) %in% c("GSE44456")], list("Grouped AE"=gene_smok_ae))
 comb_l <- get_gene_list(smok_genes, ae_overlap)
 og <- get_olap_df(smok_dfs2, comb_l)
+tau_smok <- sapply(unique(og$gene), function(gene){ calc_tau(og, gene)})
+smok_df <- tibble("gene"=unique(og$gene),"tau"=tau_smok)
 
-plot_olap_fig(og, dn="turquoise", up = "gold4", 5, smok_df)
-ggsave("figures/overlapping_genes.pdf")
+# write out table
+comb_tab <- function(overlap_df, gene_df, tau_df){
+  ae_overlap_reform <- overlap_df %>% 
+    mutate(direction=ifelse(logFC > 0, "up", "down"),
+           studies=sprintf("Grouped AE;%s", study),
+           tissues=case_when(
+             str_detect(tissue, "airway") ~ tissue,
+             TRUE ~ sprintf("airway epithelium;%s", tissue)
+           ),
+           n=nstudies+1) %>%
+    select(-chromosome_name) %>%
+    left_join(gene_df %>% select(chromosome_name, gene)) %>%
+    select(colnames(gene_df)) 
+  comb_genes <- gene_df %>% 
+    anti_join(ae_overlap_reform, by="gene") %>%
+    bind_rows(ae_overlap_reform) %>%
+    arrange(desc(n)) 
+  comb_genes %>% filter(n>2) %>% left_join(tau_df)
+}
 
+my_tab_smok <- comb_tab(ae_overlap, smok_genes, smok_df) %>%
+  mutate(chromosome_name=ifelse(gene=="MT1M", 16, chromosome_name)) %>%
+  select(chromosome_name, gene, direction, tau, n, everything()) %>%
+  rename(`in smokers`=direction)
+my_tab_smok %>% write_csv("data/supp_tables/gene_spec_smok.csv")
+
+plot_olap_fig(og, dn="turquoise", up = "gold4", 3, smok_df)
+#ggsave("figures/overlapping_genes.pdf") # 10.5
 
 # 2. sex
 all_dfs_s <- lapply(all_studies2 , function(x) x$gene_sex)
@@ -228,136 +285,62 @@ all_dfs2_s <- c(all_dfs_s[!names(all_dfs_s) %in% c("GSE44456", missing)],
 comb_sex <- get_gene_list(sex_genes, ae_overlap_s)
 olap_genes_s <- get_olap_df(all_dfs2_s, comb_sex)
 
-plot_olap_fig(olap_genes_s, dn= dark2[1], up = dark2[3], 7)
-ggsave("figures/overlapping_genes_sex.pdf")  
 
-sex_genes %>% filter(gene %in% comb_sex) %>% filter(!chromosome_name %in% c("X", "Y"))
+tau_sex <- sapply(unique(olap_genes_s$gene), function(gene){calc_tau(olap_genes_s, gene)})
 
-# significant autosomal genes from all?
+df_sex <- tibble("gene"=unique(olap_genes_s$gene), "tau"=tau_sex) 
 
+my_tab_sex <- comb_tab(ae_overlap_s, sex_genes, df_sex) %>%
+  select(chromosome_name, gene, direction, tau, n, everything()) %>%
+  mutate(chromosome_name=case_when(
+    !is.na(chromosome_name) ~ chromosome_name,
+    gene=="STS" ~ "X",
+    gene=="OFD1" ~ "X"),
+  direction=ifelse(direction=="down", "females", "males")) %>%
+  rename(`higher in`=direction)
+my_tab_sex %>% write_csv("data/supp_tables/gene_spec_sex.csv")
+plot_olap_fig(olap_genes_s, dn= dark2[1], up = dark2[3], 5, df_sex)
+#ggsave("figures/overlapping_genes_sex.pdf")  
 
-
-# plot sex [x]
-# plot autosomal [ ]
-
-# change colors for plotting [x] --> function
-# figure out how to add legend
-# add color bar on L side with gene membership?
-
-# group together tissues:
-#  airway
-#  airway-adjacent
-#  blood
-#  other
+my_tab_sex %>% filter(!chromosome_name %in% c("X", "Y") )
 
 
+# 3. compare across the two
+t.test(df_sex$tau, smok_df$tau) # p= 4.916e-10
 
-calc_tau <- function(df, my_gene){
-  filt_df <- df %>% 
-    filter(gene==my_gene) %>% 
-    filter(!is.na(logFC))
-  
-  tiss_df0 <- filt_df %>% 
-      group_tissues() %>%
-      filter(tissue!="other")
-  # make sure at least two per group
-  tiss_df0.1 <- tiss_df0 %>% semi_join(tiss_df0 %>% 
-                                         group_by(tissue) %>% 
-                                         count() %>% filter(n>1))
-  tiss_df0.2 <- tiss_df0.1 %>%
-    group_by(tissue) %>%
-    summarize(medianLF=abs(median(logFC)), .groups="drop_last") # TODO take into acct direction?
-
-  maxFC <- max(tiss_df0.2$medianLF) # max - 1?
-  if (nrow(tiss_df0.2) < 2){
-    return(NA)
-  }
-  tiss_df2 <- tiss_df0.2 %>% mutate(hat_xi=medianLF/maxFC) 
-  return(sum(1-tiss_df2$hat_xi)/(nrow(tiss_df2)-1))
-}
-tau_smok <- sapply(unique(og$gene), function(gene){
-  calc_tau(og, gene)
-})
-
-# 1 = specific, 0 = ubiquitous
-
-smok_df <- tibble("gene"=unique(og$gene),
-       "tau"=tau_smok)
-smok_df %>% arrange(desc(tau))
-smok_df %>% arrange(tau) 
-
-plot_olap_fig(og %>% 
-                mutate(gene=factor(gene, 
-                                   levels=smok_df %>% arrange(tau) %>% pull(gene))) %>%
-                mutate(tissue=case_when(
-                  str_detect(tissue, "blood") ~ "blood - whole", 
-                  str_detect(tissue, "airway") | str_detect(tissue, "trachea") ~ "airway epithelium",
-                  str_detect(tissue, "oral") | str_detect(tissue, "nasal") | 
-                    str_detect(tissue, "buccal") | 
-                    tissue=="sputum" ~ "oral cavity",
-                  tissue %in% c("liver", "brain - prefrontal cortex", "kidney") ~ "other",
-                  TRUE ~ tissue))  %>%
-                filter(!tissue %in% c("liver", "brain - prefrontal cortex", "kidney")))
-
-
-
-plot(density(smok_df$tau))
-
-ggplot(smok_df %>% mutate(gene=factor(gene, levels=levels(og$gene))), aes(y=tau, x=gene))+
- # geom_bar(stat="identity")+
-  #geom_point(alpha=0.5)+
-  theme_minimal()+
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text.y = element_blank(),
-        axis.text.x = element_text(angle = 90, hjust=1, vjust=0.5, colour="white"))+
-  geom_segment(aes(xend=gene), yend=0, alpha=0.5) +   
-  geom_point( color="darkgray") +
-  expand_limits(y=0) +
-  scale_y_continuous(
-    breaks=c(0,0.5,1),
-    labels=c("A", "E-MTAB-3604", "B"))+
-  scale_y_reverse()+
-  coord_flip()
-
-
-
-tau_sex <- sapply(unique(olap_genes_s$gene), function(gene){
-  calc_tau(olap_genes_s, gene)
-})
-
-df_sex <- tibble("gene"=unique(olap_genes_s$gene),
-             "tau"=tau_sex) 
-df_sex %>% arrange(tau)
-df_sex %>% arrange(desc(tau))
-
-t.test(df_sex$tau, smok_df$tau)
-plot(density(df_sex$tau))
-
-# UPDATE THE TISSUE LABELS + REMOVE THE OTHER TISSUES
-o_in <- olap_genes_s %>% 
-  mutate(gene=factor(gene, 
-                     levels=df_sex %>% arrange(tau) %>% pull(gene))) %>%
-  mutate(tissue=case_when(
-    str_detect(tissue, "blood") ~ "blood - whole", 
-    str_detect(tissue, "airway") | str_detect(tissue, "trachea") ~ "airway epithelium",
-    str_detect(tissue, "oral") | str_detect(tissue, "nasal") | 
-      str_detect(tissue, "buccal") | 
-      tissue=="sputum" ~ "oral cavity",
-    TRUE ~ tissue))  %>%
-  filter(!tissue %in% c( "liver", "brain - prefrontal cortex", "kidney"))
-plot_olap_fig(o_in)
-
-
-ggplot(df_sex %>% mutate(gene=factor(gene, levels=df_sex %>% arrange(tau) %>% pull(gene))), aes(y=gene, x=tau, group=1))+
-  geom_bar(stat="identity")+
-  #geom_line()+
-  theme_minimal()+
+df_sex %>% 
+  mutate(term="sex") %>% 
+  bind_rows(smok_df %>% mutate(term="smoking")) %>%
+  ggplot(aes(x=tau, fill=term))+
+  geom_histogram(position="identity", alpha=0.6)+
+  geom_density(alpha=0.1, aes(color=term))+
+  #geom_histogram(data=smok_df,fill = "red", alpha = 0.2) +
+  #geom_histogram(data=df_sex,fill = "blue", alpha = 0.2)+
+  theme_bw()+
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())+
-  scale_x_reverse()
+  xlab("tissue specificity (tau)")+
+  scale_fill_manual(values=c("purple", "gold4"))+
+  scale_color_manual(values=c("purple", "gold4"))+
+  ylab("number of genes")
+ggsave("figures/tissue_spec_dist.pdf")
 
 
+df_sex %>% 
+  mutate(term="sex") %>% 
+  bind_rows(smok_df %>% mutate(term="smoking")) %>%
+  ggplot(aes(y=tau, x=term, color=term))+
+  geom_violin(alpha=0.5)+
+  geom_boxplot(width=0.2)+
+  geom_point(alpha=0.4, position=position_jitter(width=0.1))+
+  scale_color_manual(values=c("purple", "gold4"))+
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "none")+
+  xlab("")+
+  ylab("tissue specificity (tau)")
+ggsave("figures/tissue_spec_violin.pdf")
 # [ ] add in tissue specific
 # 
 
