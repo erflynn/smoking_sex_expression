@@ -1,5 +1,8 @@
 
+library(tidyverse)
 library(psych) # for cor.wt
+
+load("data/fig_color_scale.RData")
 
 tiss_levels =c("airway epithelium", "trachea epithelium",
    "nasal epithelium", "oral cavity",
