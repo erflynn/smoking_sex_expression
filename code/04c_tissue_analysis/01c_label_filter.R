@@ -90,8 +90,12 @@ kept_r2 %>% filter(!str_detect(study_acc, "GSE")) %>% pull(study_acc) # 5
 
 ######### 2) SEX LABEL ############
 # get XY chromosome genes
-mart <- biomaRt::useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+
+mart <- biomaRt::useMart(biomart = "ensembl", 
+                         dataset = "hsapiens_gene_ensembl")
 chr_map <- biomaRt::getBM(attributes=c("hgnc_symbol", "chromosome_name"), mart=mart)
+chr_map2 <- chr_map %>% filter(chromosome_name %in% c(1:22, "X", "Y"))
+save(chr_map2, file="ref/chr_map.RData")
 xy_chr_map <- chr_map %>% filter(chromosome_name %in% c("X", "Y"))
 save(xy_chr_map, file="ref/xy_chr_map.RData")
 # try labeling w both
